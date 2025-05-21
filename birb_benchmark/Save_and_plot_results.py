@@ -66,7 +66,7 @@ def plotMultipleBiRBTests(results_per_percent, backend_name, qubits,file_name):
 
     plt.legend(loc="upper right") 
     plt.tight_layout()
-    date_now = file_name[-21:]
+    date_now = file_name[-21:-5]
     filename = f"Fit curve for {backend_name} with {qubits} qubits {date_now}.png"
     filepath = os.path.join("Images_results", filename)
     # Save figure
@@ -75,7 +75,7 @@ def plotMultipleBiRBTests(results_per_percent, backend_name, qubits,file_name):
 
 
 
-def plotEvolutionPercent(percents, infidelities_per_percent,backend_name,file_name):
+def plotEvolutionPercent(percents, infidelities_per_percent,backend_name,file_name,qubits):
     """
     Plot the mean infidelities per percent of depth of a clifford circuit 
 
@@ -105,8 +105,8 @@ def plotEvolutionPercent(percents, infidelities_per_percent,backend_name,file_na
 
     plt.legend(loc="upper right") 
     plt.tight_layout()
-    date_now = file_name[-21:]    # Construir el nombre del archivo
-    filename = f"Mean_infidelity_evolution_with_the_percent_of_the_clifford_{backend_name}_{date_now}.png"
+    date_now = file_name[-21:-5]    # Construir el nombre del archivo
+    filename = f"Mean_infidelity_evolution_with_the_percent_of_the_clifford_{backend_name}_{qubits}q_{date_now}.png"
     filepath = os.path.join("Images_results", filename)
 
     # Guardar figura
@@ -127,7 +127,7 @@ def read_data(file_name):
 
     # Ahora puedes usarlos en tu gráfico
     plotMultipleBiRBTests(results_per_percent, backend, qubits, file_name)
-    plotEvolutionPercent(percents, infidelities_per_percent, backend, file_name)
+    plotEvolutionPercent(percents, infidelities_per_percent, backend, file_name,qubits)
 
 if __name__ == '__main__':
     file_name = 'experiments_results/results_fake_brisbane_3q_2025-05-20_15-28.json'
