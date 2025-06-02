@@ -1,89 +1,63 @@
+import yaml
 import argparse
 import json
-import os
-from datetime import datetime
-
 from utils.utils import *
 
-from birb_test import BiRBTestCP
 
-def saveData(results_per_percent, backend_name, qubits, file_name):
-    """
-    Save the data of an experiment in a json file
+def loadAndRunExperiments(file):
 
-    Args: 
-        results_per_percent (list[tuples]): Contains all the information of an eperiment.
+    try:
+        with open(file, "r") as f:
+            experiments = yaml.safe_load(f)
 
-        backend_name (str): Name of the processor who runned the experiment.
+    except Exception:
+        print(f"[ERROR] Could not read the file :{file}")
 
-        qubits (int): Number of qubits used in the experiment.
+    # Validate all the parameters of one experiment
+    def validateExperimentParams(params, name="(sin nombre)"):
+        if not isinstance(params.get("backend"), str):
+            raise ValueError(f"[{name}] 'backend' must be an string")
+        
+        if not isinstance(params.get("qubits"), int):
+            raise ValueError(f"[{name}] 'qubits' must be an integer")
+        
+        depths = params.get("depths")
+        if not (isinstance(depths, list) and all(isinstance(d, int) for d in depths)):
+            raise ValueError(f"[{name}] 'depths' must be a list of integers")
+        
+        if not isinstance(params.get("circuits_per_depth"), int):
+            raise ValueError(f"[{name}] 'circuits_per_depth' must be an integer")
+        
+        percents = params.get("percents")
+        if not (isinstance(percents, list) and all(isinstance(p, float) for p in percents)):
+            raise ValueError(f"[{name}] 'percents' must be a list of floats")
 
-        file_name (str): Name of the json file to save the data
-    """
+    # Validate all experiments
+    for exp in experiments:
+        name = exp.get("name", "(no name)")
+        params = exp.get("params", {})
+        validateExperimentParams(params, name)
 
-    data = {
-        "backend_name": backend_name,
-        "qubits": qubits,
-        "results_per_percent": results_per_percent
-    }
-
-    with open(file_name, "w") as f:
-        json.dump(data, f, indent=4)
-
-    print("Data saved in file: " + file_name)
-
-
-
-def runExperiment():
-    """
-    Example of testing a quantum processor across different percentage configurations. 
-    """
-
-    qubits = 3
-    backend = "fake_sherbrooke"
-    depths = [1, 2, 4, 6, 17, 36, 65, 100, 150, 220, 300]
-    circuits_per_depth = 50
-    percents = [0.1, 0.3, 0.5, 0.7, 1]
-
-    start_date_str = datetime.today().strftime('%Y-%m-%d_%H-%M')
-
-    results_per_percent = []
-    infidelities_per_percent = []
-
-    
-    for percent in percents:
-        print("Percent: " + str(percent))
-        print("-----------")
-
-        t = BiRBTestCP(qubits, depths, "fake", backend, "david", circuits_per_depth, percent)
-
-        results, valid_depths = t.run()
-
-        A_fit, p_fit, mean_infidelity, mean_per_depth = fitModel(results, valid_depths, qubits)
-
-        infidelities_per_percent.append(mean_infidelity)
-        results_per_percent.append((percent,
-                                    results,
-                                    valid_depths,
-                                    A_fit, 
-                                    p_fit, 
-                                    mean_infidelity, 
-                                    mean_per_depth))
-
+    # Run the experiments
+    for exp in experiments:
+        name = exp.get("name", "(no name)")
+        params = exp.get("params", {})
+        print(f"Executing: {name}")
+        print(f"  Backend: {params['backend']}")
+        print(f"  Qubits: {params['qubits']}")
+        print(f"  Depths: {params['depths']}")
+        print(f"  Circuits/depth: {params['circuits_per_depth']}")
+        print(f"  Percents: {params['percents']}")
         print()
 
+        runExperiment(backend=params['backend'],
+                      qubits=params['qubits'],
+                      depths=params['depths'],
+                      circuits_per_depth=params['circuits_per_depth'],
+                      percents=params['percents'],
+                      show=True)
 
-        
-    # Save the data of the experiment
-    file_name = f"results_{backend}_{qubits}q_{start_date_str}.json"
-    folder = "experiments_results"
-    os.makedirs(folder, exist_ok=True)
-    filepath = os.path.join(folder, file_name)
 
-    saveData(results_per_percent, backend, qubits, filepath)
-
-    plotMultipleBiRBTests(results_per_percent, backend, qubits, file_name)
-    plotEvolutionPercent(percents, infidelities_per_percent, backend, file_name, qubits)
 
 def readAndPlotExperiment(file_name):
     """
@@ -113,22 +87,29 @@ def readAndPlotExperiment(file_name):
 
 def main():
 
-    parser = argparse.ArgumentParser(description="Percent BiRB tool")
+    parser = argparse.ArgumentParser(description="Run a BiRB experiment,\
+                                                  or show the data from \
+                                                  a previous experiment")
+
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Subcomand run
     run_parser = subparsers.add_parser("run", help="Run an experiment")
+    run_parser.add_argument("filepath", 
+                            type=str, 
+                            help="Path to the experiment definition file (.yaml)")
 
-    # TODO: Add a file with the parameters of the experiment
 
     # Subcomand: read
     show_parser = subparsers.add_parser("read", help="Show the data from a file")
-    show_parser.add_argument("filepath", type=str, help="Path to the file")
+    show_parser.add_argument("filepath", 
+                             type=str, 
+                             help="Path to the result of an experiment (.json)")
 
     args = parser.parse_args()
 
     if args.command == "run":
-        runExperiment()
+        loadAndRunExperiments(args.filepath)
 
     elif args.command == "read":
         readAndPlotExperiment(args.filepath)

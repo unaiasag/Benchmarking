@@ -1,11 +1,18 @@
 import os
+import json
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 import statistics
 from scipy.optimize import lsq_linear
+from birb_test import BiRBTestCP
+from datetime import datetime
 
-def plotMultipleBiRBTests(results_per_percent, backend_name, qubits, file_name):
+def plotMultipleBiRBTests(results_per_percent, 
+                          backend_name, 
+                          qubits, 
+                          file_name, 
+                          show=False):
     """
     Plot the results from multiple BiRB test
 
@@ -19,7 +26,8 @@ def plotMultipleBiRBTests(results_per_percent, backend_name, qubits, file_name):
         qubits (int): Number of qubits of the processor
 
         file_name (string): Name of the file for saving figure
-            
+        
+        show (bool): If true show the plots
     """
     
     sns.set(style="whitegrid")
@@ -73,11 +81,18 @@ def plotMultipleBiRBTests(results_per_percent, backend_name, qubits, file_name):
     filepath = os.path.join("images_results", filename)
 
     plt.savefig(filepath)
-    plt.show()
+
+    if show:
+        plt.show()
 
 
 
-def plotEvolutionPercent(percents, infidelities_per_percent, backend_name, file_name,qubits):
+def plotEvolutionPercent(percents, 
+                         infidelities_per_percent, 
+                         backend_name,
+                         file_name, 
+                         qubits, 
+                         show=False):
     """
     Plot the mean infidelities per percent of depth of a clifford circuit 
 
@@ -88,7 +103,10 @@ def plotEvolutionPercent(percents, infidelities_per_percent, backend_name, file_
                                                 each percent
 
         backend_name (string): For title
+
         file_name (string): Name of the file for saving figure
+
+        show (bool): If true show the plots
     """
 
     sns.set(style="whitegrid")
@@ -114,10 +132,10 @@ def plotEvolutionPercent(percents, infidelities_per_percent, backend_name, file_
     filename = f"Mean_infidelity_evolution_with_the_percent_of_the_clifford_{backend_name}_{qubits}q_{date_now}.png"
     filepath = os.path.join("images_results", filename)
 
-    # Guardar figura
     plt.savefig(filepath)
 
-    plt.show()
+    if show:
+        plt.show()
 
 def fitModel(results_per_depth, valid_depths, n, tolerance=0.5, initial_points=3, show=False):
 
@@ -186,14 +204,11 @@ def fitModel(results_per_depth, valid_depths, n, tolerance=0.5, initial_points=3
         k += 1
         logP_fit, logA_fit = regression(k)
 
-
-
-
     A_fit = np.exp(logA_fit)
     p_fit = np.exp(logP_fit)
 
+    # Plot linear
     if show:
-        # Plot linear
         m_fit = np.linspace(min(valid_depths), max(valid_depths), 200)
         f_fit = [logA_fit + logP_fit * m for m in m_fit]
         plt.plot(m_fit, f_fit)
@@ -203,3 +218,95 @@ def fitModel(results_per_depth, valid_depths, n, tolerance=0.5, initial_points=3
     mean_infidelity = ((4**n- 1) / 4**n) * (1 - p_fit)
 
     return A_fit, p_fit, mean_infidelity, mean_per_depth
+
+def runExperiment(backend, qubits, depths, circuits_per_depth, percents, show=False):
+    """
+        Run an experiment and save the results in a file 
+
+        Args:
+
+            backend (string):
+
+            qubits (int):
+
+            depths (list[int]):
+
+            circuits_per_depth (int):
+
+            percents (list[float]):
+
+            show (bool): If true, show the plot for each experiment
+    """
+
+    start_date_str = datetime.today().strftime('%Y-%m-%d_%H-%M')
+
+    results_per_percent = []
+    infidelities_per_percent = []
+
+    
+    for percent in percents:
+        percent_str = "Percent: " + str(percent)
+        print('#'*(len(percent_str) + 4))
+        print('# '+percent_str + ' #')
+        print('#'*(len(percent_str) + 4))
+
+        t = BiRBTestCP(qubits, depths, "fake", backend, "david", circuits_per_depth, percent)
+
+        results, valid_depths = t.run()
+
+        A_fit, p_fit, mean_infidelity, mean_per_depth = fitModel(results, valid_depths, qubits)
+
+        infidelities_per_percent.append(mean_infidelity)
+        results_per_percent.append((percent,
+                                    results,
+                                    valid_depths,
+                                    A_fit, 
+                                    p_fit, 
+                                    mean_infidelity, 
+                                    mean_per_depth))
+
+        print()
+
+
+        
+    # Save the data of the experiment
+    file_name = f"results_{backend}_{qubits}q_{start_date_str}.json"
+    folder = "experiments_results"
+    os.makedirs(folder, exist_ok=True)
+    filepath = os.path.join(folder, file_name)
+
+    saveData(results_per_percent, backend, qubits, filepath)
+
+    plotMultipleBiRBTests(results_per_percent, backend, qubits, file_name, show)
+    plotEvolutionPercent(percents, 
+                         infidelities_per_percent, 
+                         backend,
+                         file_name, 
+                         qubits,
+                         show)
+
+
+def saveData(results_per_percent, backend_name, qubits, file_name):
+    """
+    Save the data of an experiment in a json file
+
+    Args: 
+        results_per_percent (list[tuples]): Contains all the information of an eperiment.
+
+        backend_name (str): Name of the processor who runned the experiment.
+
+        qubits (int): Number of qubits used in the experiment.
+
+        file_name (str): Name of the json file to save the data
+    """
+
+    data = {
+        "backend_name": backend_name,
+        "qubits": qubits,
+        "results_per_percent": results_per_percent
+    }
+
+    with open(file_name, "w") as f:
+        json.dump(data, f, indent=4)
+
+    print("Data saved in file: " + file_name)
