@@ -5,6 +5,12 @@ from utils.utils import *
 
 
 def loadAndRunExperiments(file):
+    """
+    Open a file with some experiments definition and execute each of the experiments  
+
+    Args:
+        file_name (str): Name of the file where the experiments definitions are
+    """
 
     try:
         with open(file, "r") as f:
@@ -93,15 +99,13 @@ def main():
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # Subcomand run
     run_parser = subparsers.add_parser("run", help="Run an experiment")
     run_parser.add_argument("filepath", 
                             type=str, 
                             help="Path to the experiment definition file (.yaml)")
 
 
-    # Subcomand: read
-    show_parser = subparsers.add_parser("read", help="Show the data from a file")
+    show_parser = subparsers.add_parser("show", help="Show the data from a file")
     show_parser.add_argument("filepath", 
                              type=str, 
                              help="Path to the result of an experiment (.json)")
@@ -111,7 +115,7 @@ def main():
     if args.command == "run":
         loadAndRunExperiments(args.filepath)
 
-    elif args.command == "read":
+    elif args.command == "show":
         readAndPlotExperiment(args.filepath)
 
 
