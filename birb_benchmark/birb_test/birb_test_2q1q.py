@@ -16,8 +16,8 @@ class BiRBTest2q1q(BiRBTest):
         two-qubit gates in each layer.
     """
 
-    def __init__(self, qubits, depths, sim_type, backend_name, account_name,circuits_per_depth = int(1e5), prob2q =0.5):
-        super().__init__(qubits, depths,sim_type, backend_name, account_name, circuits_per_depth)
+    def __init__(self, qubits, depths, sim_type, backend_name, account_name, circuits_per_depth=int(1e5), shots_per_circuit=int(1e5), prob2q =0.5):
+        super().__init__(qubits, depths,sim_type, backend_name, account_name, circuits_per_depth, shots_per_circuit)
         self.prob2q = prob2q
 
     @override

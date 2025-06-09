@@ -17,8 +17,8 @@ class BiRBTestCP(BiRBTest):
         of the Clifford layer used in each test circuit.
     """
 
-    def __init__(self, qubits, depths, sim_type, backend_name, account_name ,circuits_per_depth=int(1e5), percent=0.5):
-        super().__init__(qubits, depths,sim_type, backend_name, account_name, circuits_per_depth,)
+    def __init__(self, qubits, depths, sim_type, backend_name, account_name ,circuits_per_depth=int(1e5), shots_per_circuit=int(1e5), percent=0.5):
+        super().__init__(qubits, depths,sim_type, backend_name, account_name, circuits_per_depth, shots_per_circuit)
         self.percent = percent
 
 

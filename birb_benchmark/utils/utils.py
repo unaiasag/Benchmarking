@@ -219,21 +219,23 @@ def fitModel(results_per_depth, valid_depths, n, tolerance=0.5, initial_points=3
 
     return A_fit, p_fit, mean_infidelity, mean_per_depth
 
-def runExperiment(backend, qubits, depths, circuits_per_depth, percents, show=False):
+def runExperiment(backend, qubits, depths, circuits_per_depth, shots_per_circuit, percents, show=False):
     """
         Run an experiment and save the results in a file 
 
         Args:
 
-            backend (string):
+            backend (string): Name of the IBM quantum backend (real or simulated) to run the tests on.
 
-            qubits (int):
+            qubits (int): Number of qubits available on the target quantum processor.
 
-            depths (list[int]):
+            depths (list[int]): List of circuit depths to be tested
 
-            circuits_per_depth (int):
+            circuits_per_depth (int): Number of random circuits to generate and test for each depth
 
-            percents (list[float]):
+            shots_per_circuit (int): Number of shots we make for each circuit
+
+            percents (list[float]): List of the percents of the circuit
 
             show (bool): If true, show the plot for each experiment
     """
@@ -250,7 +252,7 @@ def runExperiment(backend, qubits, depths, circuits_per_depth, percents, show=Fa
         print('# '+percent_str + ' #')
         print('#'*(len(percent_str) + 4))
 
-        t = BiRBTestCP(qubits, depths, "fake", backend, "david", circuits_per_depth, percent)
+        t = BiRBTestCP(qubits, depths, "fake", backend, "david", circuits_per_depth, shots_per_circuit, percent)
 
         results, valid_depths = t.run()
 

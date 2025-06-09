@@ -23,7 +23,7 @@ class BiRBTest(ABC):
     circuits on an IBM processor, either real or simulated.
     """
 
-    def __init__(self, qubits, depths, sim_type, backend_name, account_name ,circuits_per_depth = int(1e5)):
+    def __init__(self, qubits, depths, sim_type, backend_name, account_name, circuits_per_depth = int(1e5), shots_per_circuit = int(1e5)):
         """
         Constructor for the benchmark test class.
 
@@ -42,12 +42,14 @@ class BiRBTest(ABC):
             account_name (str): Name of the IBM account to access the cloud.
 
             circuits_per_depth (int): Number of random circuits to generate and test for each depth.
+
+            shots_per_circuit (int): Number of shots we make for each circuit.
         """
 
         self.qubits = qubits
         self.depths = depths
         self.circuits_per_depth = circuits_per_depth
-        self.each_circuit_shots = int(1e5)
+        self.shots_per_circuit = shots_per_circuit
         self.backend_name = backend_name
         self.sim_type = sim_type
         
@@ -369,7 +371,7 @@ class BiRBTest(ABC):
 
         else:
             circuit_noise = self.passmanager.run(circuit) 
-            result_sim = self.sim_noise.run(circuit_noise,shots=self.each_circuit_shots).result()
+            result_sim = self.sim_noise.run(circuit_noise,shots=self.shots_per_circuit).result()
             counts_sim = result_sim.get_counts(0)
 
         return counts_sim
@@ -407,7 +409,7 @@ class BiRBTest(ABC):
         for bitstring, count in counts_sim.items():
             mean += self._getEigenvalue(bitstring, final_pauli) * count
 
-        mean /= self.each_circuit_shots
+        mean /= self.shots_per_circuit
 
         return mean
 

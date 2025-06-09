@@ -33,6 +33,9 @@ def loadAndRunExperiments(file):
         
         if not isinstance(params.get("circuits_per_depth"), int):
             raise ValueError(f"[{name}] 'circuits_per_depth' must be an integer")
+
+        if not isinstance(params.get("shots_per_circuit"), int):
+            raise ValueError(f"[{name}] 'shots_per_circuit' must be an integer")
         
         percents = params.get("percents")
         if not (isinstance(percents, list) and all(isinstance(p, float) for p in percents)):
@@ -53,6 +56,7 @@ def loadAndRunExperiments(file):
         print(f"  Qubits: {params['qubits']}")
         print(f"  Depths: {params['depths']}")
         print(f"  Circuits/depth: {params['circuits_per_depth']}")
+        print(f"  Shots per circuit: {params['shots_per_circuit']}")
         print(f"  Percents: {params['percents']}")
         print()
 
@@ -60,6 +64,7 @@ def loadAndRunExperiments(file):
                       qubits=params['qubits'],
                       depths=params['depths'],
                       circuits_per_depth=params['circuits_per_depth'],
+                      shots_per_circuit=params['shots_per_circuit'],
                       percents=params['percents'],
                       show=True)
 
