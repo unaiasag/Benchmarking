@@ -126,7 +126,7 @@ def plotEvolutionPercent(percents,
     ax.set_facecolor((0.95, 0.95, 1, 0.2)) 
     ax.set_title("Mean infidelity evolution with the percent of the clifford")
 
-    plt.legend(loc="upper right") 
+    plt.legend(loc="upper left") 
     plt.tight_layout()
     date_now = file_name[-21:-5]    # Construir el nombre del archivo
     filename = f"Mean_infidelity_evolution_with_the_percent_of_the_clifford_{backend_name}_{qubits}q_{date_now}.png"
@@ -252,7 +252,15 @@ def runExperiment(backend, qubits, depths, circuits_per_depth, shots_per_circuit
         print('# '+percent_str + ' #')
         print('#'*(len(percent_str) + 4))
 
-        t = BiRBTestCP(qubits, depths, "fake", backend, "david", circuits_per_depth, shots_per_circuit, percent)
+
+        t = BiRBTestCP(qubits, 
+                       depths, 
+                       "fake", 
+                       backend, 
+                       "david", 
+                       circuits_per_depth, 
+                       shots_per_circuit, 
+                       percent)
 
         results, valid_depths = t.run()
 
@@ -286,6 +294,90 @@ def runExperiment(backend, qubits, depths, circuits_per_depth, shots_per_circuit
                          file_name, 
                          qubits,
                          show)
+
+def plotCliffordVolume(results_per_percent, backend_name, qubits, show=False):
+
+    clifford_volume_per_percent_results = []
+    mean_clifford_volume_per_percent = []
+    percents = []
+
+    for data in results_per_percent: 
+
+        # Extract all the data
+        percent, results_per_depth, valid_depths, _, _,\
+        _ , mean_per_depth = data
+
+
+        if(valid_depths[0] == 1):
+            percents.append(percent) 
+            clifford_volume_per_percent_results.append([((4**qubits - 1) / 4**qubits) * (1 - q)  for q in results_per_depth[0]]) 
+            mean_clifford_volume_per_percent.append(((4**qubits - 1) / 4**qubits) * (1 - mean_per_depth[0]))
+
+    #print(clifford_volume_per_percent_results)
+
+    violin_widht = 0.1
+    if(len(percents) > 1):
+        violin_widht = (percents[1] - percents[0])/4
+
+    # Plot the exact points and scatter 
+    parts = plt.violinplot(clifford_volume_per_percent_results, positions=percents, widths=violin_widht,
+                           showmeans=True, showextrema=False, showmedians=False)
+
+
+    color = sns.color_palette("pastel", 1)[0]
+
+    for pc in parts['bodies']:
+        pc.set_facecolor(color)
+        pc.set_alpha(0.3)
+        pc.set_edgecolor("none")
+
+    plt.scatter(percents, mean_clifford_volume_per_percent, color=color, s=40, zorder=4)
+
+    # Draw a line between the points
+    plt.plot(percents, mean_clifford_volume_per_percent, label='Clifford volume', color=color)
+
+    plt.xlabel("Percents")
+    plt.ylabel("Infidelity")
+
+    ax = plt.gca()
+
+    # Background
+    ax.set_facecolor((0.95, 0.95, 1, 0.2)) 
+    ax.set_title("Entanglement infidelity of a clifford gate" + backend_name + " with " 
+                 + str(qubits) + " qubits")
+
+    plt.legend(loc="upper right") 
+    plt.tight_layout()
+    if(show):
+        plt.show()
+    #sns.set(style="whitegrid")
+    #plt.figure(figsize=(7, 4))
+
+    #color = sns.color_palette("pastel", 1)[0]
+
+    #plt.plot(percents, infidelities_per_percent, label='Ideal infidelity curve', color=color, marker='o')
+
+
+    #plt.xlabel("Percent of a Clifford")
+    #plt.ylabel("Mean infidelity")
+
+    #ax = plt.gca()
+
+    ## Background
+    #ax.set_facecolor((0.95, 0.95, 1, 0.2)) 
+    #ax.set_title("Mean infidelity evolution with the percent of the clifford")
+
+    #plt.legend(loc="upper right") 
+    #plt.tight_layout()
+    #date_now = file_name[-21:-5]    # Construir el nombre del archivo
+    #filename = f"Mean_infidelity_evolution_with_the_percent_of_the_clifford_{backend_name}_{qubits}q_{date_now}.png"
+    #filepath = os.path.join("images_results", filename)
+
+    #plt.savefig(filepath)
+
+    if show:
+        plt.show()
+
 
 
 def saveData(results_per_percent, backend_name, qubits, file_name):

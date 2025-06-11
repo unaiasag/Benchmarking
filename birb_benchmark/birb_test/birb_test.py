@@ -1,10 +1,6 @@
 import random
 import sys
 import statistics
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-from scipy.optimize import lsq_linear
 from abc import ABC, abstractmethod
 
 from qiskit import QuantumCircuit, transpile
@@ -66,7 +62,6 @@ class BiRBTest(ABC):
 
             # Create noisy simulator backend
             self.sim_noise = AerSimulator(noise_model=noise_real_model)
-             
             self.passmanager = generate_preset_pass_manager(optimization_level=3, 
                                                             backend=self.sim_noise)
 
@@ -79,6 +74,8 @@ class BiRBTest(ABC):
 
             self.backend.refresh(service)
             self.sampler = SamplerV2(self.backend)
+
+
         else:
             print("Select a valid simulator: 'fake' or 'aer'")
             sys.exit(1)
@@ -324,7 +321,7 @@ class BiRBTest(ABC):
               v == s)
 
         # 3. Generate the final circuit, including the basis change for measurement.
-        print("\n3. <easurement in the s' basis':")
+        print("\n3. Measurement in the s' basis':")
 
         all_right = True
 
@@ -365,8 +362,7 @@ class BiRBTest(ABC):
 
         if(self.sim_type == 'fake'):
             transpiled_circuit = transpile(circuit, self.backend)
-            job = self.sampler.run([transpiled_circuit])
-            pub_result = job.result()[0]
+            pub_result = self.sampler.run([transpiled_circuit], shots=self.shots_per_circuit).result()[0]
             counts_sim = pub_result.data.meas.get_counts()
 
         else:
@@ -406,9 +402,13 @@ class BiRBTest(ABC):
         counts_sim = self._runCircuitSimulation(final_circuit)
 
         mean = 0 
+        total_num_shots = 0
         for bitstring, count in counts_sim.items():
             mean += self._getEigenvalue(bitstring, final_pauli) * count
+            total_num_shots += count
 
+        # Check that the computer is making the correct number of shots
+        assert self.shots_per_circuit == total_num_shots, "Number of shots less than expected"
         mean /= self.shots_per_circuit
 
         return mean

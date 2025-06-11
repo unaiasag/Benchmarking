@@ -1,0 +1,9 @@
+
+- name: ibm_fake_hanoi_3q
+  params:
+    backend: "fake_hanoi"
+    qubits: 3
+    depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+    circuits_per_depth: 50
+    shots_per_circuit: 100000
+    percents: [1.0]

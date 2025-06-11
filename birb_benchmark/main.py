@@ -77,24 +77,41 @@ def readAndPlotExperiment(file_name):
     Args:
         file_name (str): Name of the file to import the experiment
     """
+    file = None
     try:
-        with open(file_name, 'r') as file:
-            data = json.load(file)
-            results_per_percent = data['results_per_percent']
-            backend = data['backend_name']
-            qubits = data['qubits']
-            percents = [item[0] for item in results_per_percent]  
-            infidelities_per_percent = [item[5] for item in results_per_percent]
-
-            plotMultipleBiRBTests(results_per_percent, backend, qubits, file_name)
-            plotEvolutionPercent(percents, 
-                                 infidelities_per_percent, 
-                                 backend,
-                                 file_name, 
-                                 qubits)
-
+        file = open(file_name,'r')
     except Exception:
-        print(f"[ERROR] Could not read the file :{file_name}")
+        print(f"[ERROR] Could not read the file: {file_name}")
+
+    data = json.load(file)
+    backend = data['backend_name']
+    qubits = data['qubits']
+    results_per_percent = data['results_per_percent']
+    percents = [item[0] for item in results_per_percent]
+    infidelities_per_percent = [item[5] for item in results_per_percent]
+
+    for percent_results in results_per_percent:
+        A_fit, p_fit, mean_infidelity, mean_per_depth = fitModel(percent_results[1],
+                                                                 percent_results[2],
+                                                                 qubits,
+                                                                 tolerance=0.5,
+                                                                 initial_points=4,
+                                                                 show=False)
+        percent_results[3] = A_fit
+        percent_results[4] = p_fit
+        percent_results[5] = mean_infidelity
+        percent_results[6] = mean_per_depth
+
+
+    #plotCliffordVolume(results_per_percent, backend, qubits, file_name)
+    plotMultipleBiRBTests(results_per_percent, backend, qubits, file_name, show=True)
+    plotEvolutionPercent(percents,
+                         infidelities_per_percent,
+                         backend,
+                         file_name,
+                         qubits,
+                         show=True)
+
 
 def main():
 
