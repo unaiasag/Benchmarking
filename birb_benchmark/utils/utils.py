@@ -45,7 +45,7 @@ def plotMultipleBiRBTests(results_per_percent,
 
 
         # Plot the exact points and scatter 
-        parts = plt.violinplot(results_per_depth, positions=valid_depths, widths=1,
+        parts = plt.violinplot(results_per_depth, positions=valid_depths, widths=5,
                                showmeans=True, showextrema=False, showmedians=False)
 
         for pc in parts['bodies']:
@@ -87,8 +87,7 @@ def plotMultipleBiRBTests(results_per_percent,
 
 
 
-def plotEvolutionPercent(percents, 
-                         infidelities_per_percent, 
+def plotEvolutionPercent(results_per_percent,
                          backend_name,
                          file_name, 
                          qubits, 
@@ -97,10 +96,9 @@ def plotEvolutionPercent(percents,
     Plot the mean infidelities per percent of depth of a clifford circuit 
 
     Args:
-        percents (list[float]): List of percents 
-
-        infidelities_per_percent (list[float]): List with the infidelity for
-                                                each percent
+        results_per_percent (list[tuple]): List that contains tuples of the form
+                                           (percent, results, valid_depths, A_fit,
+                                           p_fit, mean_infidelity, mean_per_depth))
 
         backend_name (string): For title
 
@@ -113,6 +111,9 @@ def plotEvolutionPercent(percents,
     plt.figure(figsize=(7, 4))
 
     color = sns.color_palette("pastel", 1)[0]
+
+    percents = [item[0] for item in results_per_percent]
+    infidelities_per_percent = [item[5] for item in results_per_percent]
 
     plt.plot(percents, infidelities_per_percent, label='Ideal infidelity curve', color=color, marker='o')
 
@@ -285,11 +286,20 @@ def runExperiment(backend, qubits, depths, circuits_per_depth, shots_per_circuit
     os.makedirs(folder, exist_ok=True)
     filepath = os.path.join(folder, file_name)
 
-    saveData(results_per_percent, backend, qubits, filepath)
+    saveData(results_per_percent,
+             backend,
+             qubits,
+             circuits_per_depth,
+             shots_per_circuit,
+             filepath)
 
-    plotMultipleBiRBTests(results_per_percent, backend, qubits, file_name, show)
-    plotEvolutionPercent(percents, 
-                         infidelities_per_percent, 
+    plotMultipleBiRBTests(results_per_percent,
+                          backend,
+                          qubits,
+                          file_name,
+                          show)
+
+    plotEvolutionPercent(results_per_percent,
                          backend,
                          file_name, 
                          qubits,
@@ -380,7 +390,7 @@ def plotCliffordVolume(results_per_percent, backend_name, qubits, show=False):
 
 
 
-def saveData(results_per_percent, backend_name, qubits, file_name):
+def saveData(results_per_percent, backend_name, qubits, circuits_per_depth, shots_per_circuit, file_name):
     """
     Save the data of an experiment in a json file
 
@@ -391,14 +401,26 @@ def saveData(results_per_percent, backend_name, qubits, file_name):
 
         qubits (int): Number of qubits used in the experiment.
 
+        circuits_per_depth (int): Number of circuits in each depth
+
+        shots_per_circuit (int): Number of shot in each circuit
+
         file_name (str): Name of the json file to save the data
+
+
     """
+
+    # We just need to store percent, results, and valid_depths
+    results_to_save = [(item[0], item[1], item[2]) for item in results_per_percent]
 
     data = {
         "backend_name": backend_name,
         "qubits": qubits,
-        "results_per_percent": results_per_percent
+        "circuits_per_depth": circuits_per_depth,
+        "shots_per_circuit": shots_per_circuit,
+        "results_saved": results_to_save
     }
+
 
     with open(file_name, "w") as f:
         json.dump(data, f, indent=4)
