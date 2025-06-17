@@ -12,6 +12,10 @@ from qiskit_aer.noise import NoiseModel
 from qiskit_ibm_runtime import SamplerV2
 from qiskit_ibm_runtime.fake_provider import FakeProviderForBackendV2 
 
+from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
+from rich.console import Console
+from rich.panel import Panel
+from rich.align import Align
 
 class BiRBTest(ABC):
     """
@@ -65,7 +69,7 @@ class BiRBTest(ABC):
             self.passmanager = generate_preset_pass_manager(optimization_level=3, 
                                                             backend=self.sim_noise)
 
-        elif(self.sim_type == "fake"):
+        elif(self.sim_type == "fake" or self.sim_type == "noiseless"):
             try:
                 self.backend = FakeProviderForBackendV2().backend(backend_name)
             except Exception:
@@ -360,14 +364,28 @@ class BiRBTest(ABC):
             the number of times that bitstring was observed.
         """
 
+        transpiled_circuit = transpile(circuit, self.backend, optimization_level=3)
         if(self.sim_type == 'fake'):
-            transpiled_circuit = transpile(circuit, self.backend)
-            pub_result = self.sampler.run([transpiled_circuit], shots=self.shots_per_circuit).result()[0]
+            pub_result = self.sampler.run([transpiled_circuit],
+                                          shots=self.shots_per_circuit).result()[0]
+
             counts_sim = pub_result.data.meas.get_counts()
 
+        elif (self.sim_type == 'noiseless'):
+
+            simulator = AerSimulator(
+                basis_gates=self.backend.configuration().basis_gates,
+                coupling_map=self.backend.configuration().coupling_map
+            )
+
+            result = simulator.run(transpiled_circuit, 
+                                   shots=self.shots_per_circuit).result()
+            counts_sim = result.get_counts(0)
+            
         else:
             circuit_noise = self.passmanager.run(circuit) 
-            result_sim = self.sim_noise.run(circuit_noise,shots=self.shots_per_circuit).result()
+            result_sim = self.sim_noise.run(circuit_noise,
+                                            shots=self.shots_per_circuit).result()
             counts_sim = result_sim.get_counts(0)
 
         return counts_sim
@@ -395,7 +413,11 @@ class BiRBTest(ABC):
         final_pauli = initial_pauli.evolve(random_circuit, frame='s') 
 
         # Complete circuit
-        final_circuit = estabilizer_circuit.compose(random_circuit).compose(self._pauliMeasurementCircuit(final_pauli))
+        final_circuit = (
+            estabilizer_circuit
+            .compose(random_circuit)
+            .compose(self._pauliMeasurementCircuit(final_pauli)))
+
         final_circuit.measure_all()
  
         # Run the circuit 
@@ -412,7 +434,6 @@ class BiRBTest(ABC):
         mean /= self.shots_per_circuit
 
         return mean
-
 
     def run(self, eps=1e-5):
 
@@ -433,24 +454,81 @@ class BiRBTest(ABC):
                                      actually executed.
         """
 
+
         results_per_depth = []
         valid_depths = []
-        for depth in self.depths:
-            depth_result = []
-            for i in range(0, self.circuits_per_depth):
-                result = self._runCircuit(depth) 
-                depth_result.append(result)
 
-                # For debugging
-                print("Depth: "+ str(depth) + " count " + str((i+1)) + " result ", result)
+        console = Console()
+        console.print("")
+
+        panel = Panel(
+            Align.center("[bold]🚀 Running Clifford circuits for "
+                         "different depths[/bold]"),
+            title="PROCESSING",
+            border_style="green",
+        )
+        console.print(Align.center(panel))
+
+        with Progress(
+            TextColumn("[bold green]{task.fields[title]}"),
+            BarColumn(),
+            TextColumn("({task.completed}/{task.total})"),
+            TextColumn("{task.fields[result]}"),
+            TimeElapsedColumn(),
+            transient=False
+        ) as progress:
+            overall_task = progress.add_task("", 
+                                             total=len(self.depths),
+                                             title="Total depths", 
+                                             result="")
+
+            for depth in self.depths:
+                circuit_task = progress.add_task(f"{depth}",
+                                                 total=self.circuits_per_depth,
+                                                 title=f"Circuits of depth {depth}",
+                                                 result="")
 
 
-            results_per_depth.append(depth_result)
-            valid_depths.append(depth)
+                depth_result = []
 
-            # If it is so low depth we not continue
-            if(statistics.mean(depth_result) < eps):
-                break
-        
+                for _ in range(self.circuits_per_depth):
+                    result = self._runCircuit(depth)
+                    depth_result.append(result)
+                    progress.update(circuit_task,
+                                    advance=1,
+                                    result=f"[dim]Result:[/dim] {result:.4f}")
+
+
+                results_per_depth.append(depth_result)
+                valid_depths.append(depth)
+
+                progress.update(overall_task, advance=1)
+                progress.remove_task(circuit_task)
+
+                # If it is so low depth we not continue
+                if(statistics.mean(depth_result) < eps):
+                    break
+
+
+
+        #results_per_depth = []
+        #valid_depths = []
+        #for depth in self.depths:
+        #    depth_result = []
+        #    for i in range(0, self.circuits_per_depth):
+        #        result = self._runCircuit(depth) 
+        #        depth_result.append(result)
+
+        #        # For debugging
+        #        print("Depth: "+ str(depth) + " count " + str((i+1)) + " result ", result)
+
+
+        #    results_per_depth.append(depth_result)
+        #    valid_depths.append(depth)
+
+        #    # If it is so low depth we not continue
+        #    if(statistics.mean(depth_result) < eps):
+        #        break
+        #
 
         return results_per_depth, valid_depths

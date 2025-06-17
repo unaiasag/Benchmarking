@@ -5,8 +5,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import statistics
 from scipy.optimize import lsq_linear
-from birb_test import BiRBTestCP
+from rich import print
+from rich.panel import Panel
+from rich.console import Console
+from rich.align import Align
+
 from datetime import datetime
+
+from birb_test import BiRBTestCP
 
 def plotMultipleBiRBTests(results_per_percent, 
                           backend_name, 
@@ -220,11 +226,20 @@ def fitModel(results_per_depth, valid_depths, n, tolerance=0.5, initial_points=3
 
     return A_fit, p_fit, mean_infidelity, mean_per_depth
 
-def runExperiment(backend, qubits, depths, circuits_per_depth, shots_per_circuit, percents, show=False):
+def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
+                  circuits_per_depth, shots_per_circuit, percents, show=False):
     """
         Run an experiment and save the results in a file 
 
         Args:
+            user (string): IBM user
+
+            sim_type (string): Simulation type. Accepted values are:
+                - "fake": fake backends
+                - "aer": Aer simulations
+                - "real" Real device TODO
+
+            output_folder (string): Path to the folder to store the data
 
             backend (string): Name of the IBM quantum backend (real or simulated) to run the tests on.
 
@@ -248,24 +263,33 @@ def runExperiment(backend, qubits, depths, circuits_per_depth, shots_per_circuit
 
     
     for percent in percents:
-        percent_str = "Percent: " + str(percent)
-        print('#'*(len(percent_str) + 4))
-        print('# '+percent_str + ' #')
-        print('#'*(len(percent_str) + 4))
 
+        console = Console()
+        panel = Panel(
+            Align.center(f"[bold yellow]Circuit percent: {percent*100}%[/bold yellow]"),
+            title="",
+            border_style="bright_yellow"
+        )
+
+        console.print(panel)
 
         t = BiRBTestCP(qubits, 
                        depths, 
-                       "fake", 
+                       sim_type, 
                        backend, 
-                       "DavidUPV", 
+                       user, 
                        circuits_per_depth, 
                        shots_per_circuit, 
                        percent)
 
         results, valid_depths = t.run()
 
-        A_fit, p_fit, mean_infidelity, mean_per_depth = fitModel(results, valid_depths, qubits)
+        (
+            A_fit,
+            p_fit,
+            mean_infidelity,
+            mean_per_depth
+        ) = fitModel(results, valid_depths, qubits)
 
         infidelities_per_percent.append(mean_infidelity)
         results_per_percent.append((percent,
@@ -282,9 +306,8 @@ def runExperiment(backend, qubits, depths, circuits_per_depth, shots_per_circuit
         
     # Save the data of the experiment
     file_name = f"results_{backend}_{qubits}q_{start_date_str}.json"
-    folder = "experiments_results"
-    os.makedirs(folder, exist_ok=True)
-    filepath = os.path.join(folder, file_name)
+    os.makedirs(output_folder, exist_ok=True)
+    filepath = os.path.join(output_folder, file_name)
 
     saveData(results_per_percent,
              backend,
@@ -305,7 +328,32 @@ def runExperiment(backend, qubits, depths, circuits_per_depth, shots_per_circuit
                          qubits,
                          show)
 
-def plotCliffordVolume(results_per_percent, backend_name, qubits, show=False):
+    plotCliffordVolume(results_per_percent, 
+                       backend,
+                       qubits,
+                       file_name,
+                       show)
+
+def plotCliffordVolume(results_per_percent, backend_name, qubits, file_name,
+                       show=False):
+
+    """
+    Plot the mean infidelities of a Clifford, counting the measurement effect,
+    per percent
+
+    Args:
+        results_per_percent (list[tuple]): List that contains tuples of the form
+                                           (percent, results, valid_depths, A_fit,
+                                           p_fit, mean_infidelity, mean_per_depth))
+
+        backend_name (string): For title
+
+        qubits (int): Number of qubits 
+
+        file_name (string): Name of the file for saving figure
+
+        show (bool): If true show the plots
+    """
 
     clifford_volume_per_percent_results = []
     mean_clifford_volume_per_percent = []
@@ -314,24 +362,47 @@ def plotCliffordVolume(results_per_percent, backend_name, qubits, show=False):
     for data in results_per_percent: 
 
         # Extract all the data
-        percent, results_per_depth, valid_depths, _, _,\
-        _ , mean_per_depth = data
+        (
+            percent,
+            results_per_depth,
+            valid_depths,
+            _,
+            _,
+            _,
+            mean_per_depth
+        ) = data
 
 
-        if(valid_depths[0] == 1):
+        if(valid_depths[0] != 1):
+            print("Could not calculate Clifford Volume because the test does "
+                "not include just 1 Clifford depth")
+            return
+        else:
+
             percents.append(percent) 
-            clifford_volume_per_percent_results.append([((4**qubits - 1) / 4**qubits) * (1 - q)  for q in results_per_depth[0]]) 
-            mean_clifford_volume_per_percent.append(((4**qubits - 1) / 4**qubits) * (1 - mean_per_depth[0]))
+            
+            # Translate all the results to infidelities
+            clifford_volume_per_percent_results.append(
+                [((4**qubits - 1) / 4**qubits) * (1 - q)  for q in results_per_depth[0]]
+            ) 
 
-    #print(clifford_volume_per_percent_results)
+            # Translate the mean to infidelity
+            mean_clifford_volume_per_percent.append(
+                ((4**qubits - 1) / 4**qubits) * (1 - mean_per_depth[0])
+            )
+
 
     violin_widht = 0.1
     if(len(percents) > 1):
         violin_widht = (percents[1] - percents[0])/4
 
     # Plot the exact points and scatter 
-    parts = plt.violinplot(clifford_volume_per_percent_results, positions=percents, widths=violin_widht,
-                           showmeans=True, showextrema=False, showmedians=False)
+    parts = plt.violinplot(clifford_volume_per_percent_results,
+                           positions=percents,
+                           widths=violin_widht,
+                           showmeans=True,
+                           showextrema=False,
+                           showmedians=False)
 
 
     color = sns.color_palette("pastel", 1)[0]
@@ -341,56 +412,44 @@ def plotCliffordVolume(results_per_percent, backend_name, qubits, show=False):
         pc.set_alpha(0.3)
         pc.set_edgecolor("none")
 
-    plt.scatter(percents, mean_clifford_volume_per_percent, color=color, s=40, zorder=4)
+    plt.scatter(percents,
+                mean_clifford_volume_per_percent,
+                color=color,
+                s=40,
+                zorder=4)
 
     # Draw a line between the points
-    plt.plot(percents, mean_clifford_volume_per_percent, label='Clifford volume', color=color)
+    plt.plot(percents,
+             mean_clifford_volume_per_percent,
+             label='Clifford volume',
+             color=color)
 
     plt.xlabel("Percents")
-    plt.ylabel("Infidelity")
+    plt.ylabel("Entanglement infidelity")
 
     ax = plt.gca()
 
     # Background
     ax.set_facecolor((0.95, 0.95, 1, 0.2)) 
-    ax.set_title("Entanglement infidelity of a clifford gate" + backend_name + " with " 
+    ax.set_title("Entanglement infidelity of a clifford in " + backend_name + " with " 
                  + str(qubits) + " qubits")
 
     plt.legend(loc="upper right") 
     plt.tight_layout()
+
+    # Save figure
+    date_now = file_name[-21:-5]
+    filename = f"Clifford_volume_{backend_name}_with_{qubits}_qubits_{date_now}.png"
+    filepath = os.path.join("images_results", filename)
+
+    plt.savefig(filepath)
+
     if(show):
         plt.show()
-    #sns.set(style="whitegrid")
-    #plt.figure(figsize=(7, 4))
-
-    #color = sns.color_palette("pastel", 1)[0]
-
-    #plt.plot(percents, infidelities_per_percent, label='Ideal infidelity curve', color=color, marker='o')
 
 
-    #plt.xlabel("Percent of a Clifford")
-    #plt.ylabel("Mean infidelity")
-
-    #ax = plt.gca()
-
-    ## Background
-    #ax.set_facecolor((0.95, 0.95, 1, 0.2)) 
-    #ax.set_title("Mean infidelity evolution with the percent of the clifford")
-
-    #plt.legend(loc="upper right") 
-    #plt.tight_layout()
-    #date_now = file_name[-21:-5]    # Construir el nombre del archivo
-    #filename = f"Mean_infidelity_evolution_with_the_percent_of_the_clifford_{backend_name}_{qubits}q_{date_now}.png"
-    #filepath = os.path.join("images_results", filename)
-
-    #plt.savefig(filepath)
-
-    if show:
-        plt.show()
-
-
-
-def saveData(results_per_percent, backend_name, qubits, circuits_per_depth, shots_per_circuit, file_name):
+def saveData(results_per_percent, backend_name, qubits, circuits_per_depth,
+             shots_per_circuit, file_name):
     """
     Save the data of an experiment in a json file
 
