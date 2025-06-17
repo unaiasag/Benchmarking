@@ -164,7 +164,7 @@ of the Clifford Volume benchmark.
 
 
 ### Structure 
-The code and the results of this benchmark is inside the folder `birb_bechmark`
+The code and the results of this benchmark is inside the folder `CV_and_birb_bechmark`
 .This folder contains a project designed to execute the BiRB and Clifford
 Volume over varying percentages of Clifford circuits. The project is organized
 as follows:
