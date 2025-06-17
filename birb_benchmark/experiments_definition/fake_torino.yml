@@ -1,55 +1,61 @@
-# Experiments for fake_toronto
-- name: ibm_fake_torino_4q
-  params:
-    backend: "fake_torino"
-    qubits: 4
-    depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-    circuits_per_depth: 100
-    shots_per_circuit: 10000
-    percents: [0.5, 0.7, 1.0]
 
-- name: ibm_fake_torino_5q
-  params:
-    backend: "fake_torino"
-    qubits: 5
-    depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-    circuits_per_depth: 100
-    shots_per_circuit: 10000
-    percents: [0.5, 0.7, 1.0]
+config:
+  user: "david"
+  simulation_type: "fake"
+  output_path: "experiments_results"
+
+experiments:
+  - name: ibm_fake_torino_4q
+    params:
+      backend: "fake_torino"
+      qubits: 4
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.5, 0.7, 1.0]
+
+  - name: ibm_fake_torino_5q
+    params:
+      backend: "fake_torino"
+      qubits: 5
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.5, 0.7, 1.0]
 
 
-- name: ibm_fake_torino_6q
-  params:
-    backend: "fake_torino"
-    qubits: 6
-    depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-    circuits_per_depth: 100
-    shots_per_circuit: 10000
-    percents: [0.5, 0.7, 1.0]
+  - name: ibm_fake_torino_6q
+    params:
+      backend: "fake_torino"
+      qubits: 6
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.5, 0.7, 1.0]
 
-- name: ibm_fake_torino_7q
-  params:
-    backend: "fake_torino"
-    qubits: 7
-    depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-    circuits_per_depth: 100
-    shots_per_circuit: 10000
-    percents: [0.5, 0.7, 1.0]
+  - name: ibm_fake_torino_7q
+    params:
+      backend: "fake_torino"
+      qubits: 7
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.5, 0.7, 1.0]
 
-- name: ibm_fake_torino_8q
-  params:
-    backend: "fake_torino"
-    qubits: 8
-    depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-    circuits_per_depth: 100
-    shots_per_circuit: 10000
-    percents: [0.5, 0.7, 1.0]
+  - name: ibm_fake_torino_8q
+    params:
+      backend: "fake_torino"
+      qubits: 8
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.5, 0.7, 1.0]
 
-- name: ibm_fake_torino_9q
-  params:
-    backend: "fake_torino"
-    qubits: 9
-    depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-    circuits_per_depth: 100
-    shots_per_circuit: 10000
-    percents: [0.5, 0.7, 1.0]
+  - name: ibm_fake_torino_9q
+    params:
+      backend: "fake_torino"
+      qubits: 9
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.5, 0.7, 1.0]

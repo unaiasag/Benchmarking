@@ -1,6 +1,10 @@
 import yaml
 import argparse
 import json
+from pathlib import Path
+from rich.console import Console
+from rich.table import Table
+
 from utils.utils import *
 
 def loadAndRunExperiments(file):
@@ -13,10 +17,11 @@ def loadAndRunExperiments(file):
 
     try:
         with open(file, "r") as f:
-            experiments = yaml.safe_load(f)
+            data = yaml.safe_load(f)
 
     except Exception:
         print(f"[ERROR] Could not read the file :{file}")
+
 
     # Validate all the parameters of one experiment
     def validateExperimentParams(params, name="(sin nombre)"):
@@ -40,6 +45,21 @@ def loadAndRunExperiments(file):
         if not (isinstance(percents, list) and all(isinstance(p, float) for p in percents)):
             raise ValueError(f"[{name}] 'percents' must be a list of floats")
 
+
+    # General config 
+    config = data["config"]
+    user = config["user"]
+    simulation_type = config["simulation_type"]
+    output_folder = config["output_path"]
+    output_path = Path(output_folder)
+
+    if not output_path.exists() or not output_path.is_dir():
+        raise ValueError(f"{output_path} must be a valid folder path.")
+
+
+    # All the experiments
+    experiments = data["experiments"]
+
     # Validate all experiments
     for exp in experiments:
         name = exp.get("name", "(no name)")
@@ -50,16 +70,28 @@ def loadAndRunExperiments(file):
     for exp in experiments:
         name = exp.get("name", "(no name)")
         params = exp.get("params", {})
-        print(f"Executing: {name}")
-        print(f"  Backend: {params['backend']}")
-        print(f"  Qubits: {params['qubits']}")
-        print(f"  Depths: {params['depths']}")
-        print(f"  Circuits/depth: {params['circuits_per_depth']}")
-        print(f"  Shots per circuit: {params['shots_per_circuit']}")
-        print(f"  Percents: {params['percents']}")
-        print()
 
-        runExperiment(backend=params['backend'],
+
+        console = Console()
+
+        table = Table(title=f"🧪 Expermient {name} detalis", border_style="magenta")
+        table.add_column("Parameter", style="bold cyan")
+        table.add_column("Value", style="white")
+
+        table.add_row("Backend", params['backend'])
+        table.add_row("Qubits", str(params['qubits']))
+        table.add_row("Depths", str(params['depths']))
+        table.add_row("Circuits per depth", str(params['circuits_per_depth']))
+        table.add_row("Shots per circuit", str(params['shots_per_circuit']))
+        table.add_row("Percents", str(params['percents']))
+
+        console.print(table)
+
+
+        runExperiment(user=user,
+                      sim_type=simulation_type,
+                      output_folder=output_folder,
+                      backend=params['backend'],
                       qubits=params['qubits'],
                       depths=params['depths'],
                       circuits_per_depth=params['circuits_per_depth'],
@@ -106,10 +138,23 @@ def readAndPlotExperiment(file_name):
             mean_per_depth
         ))
 
-    #plotCliffordVolume(results_per_percent, backend, qubits, file_name)
-    plotMultipleBiRBTests(results_per_percent, backend, qubits, file_name, show=True)
+    plotCliffordVolume(results_per_percent,
+                       backend,
+                       qubits,
+                       file_name,
+                       show=True)
 
-    plotEvolutionPercent(results_per_percent, backend, file_name, qubits, show=True)
+    plotMultipleBiRBTests(results_per_percent,
+                          backend,
+                          qubits,
+                          file_name,
+                          show=True)
+
+    plotEvolutionPercent(results_per_percent,
+                         backend,
+                         file_name,
+                         qubits,
+                         show=True)
 
 
 def main():
