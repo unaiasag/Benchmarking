@@ -258,7 +258,7 @@ def runExperiment(backend, qubits, depths, circuits_per_depth, shots_per_circuit
                        depths, 
                        "fake", 
                        backend, 
-                       "david", 
+                       "DavidUPV", 
                        circuits_per_depth, 
                        shots_per_circuit, 
                        percent)
