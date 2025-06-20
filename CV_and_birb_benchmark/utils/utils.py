@@ -259,8 +259,18 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
     start_date_str = datetime.today().strftime('%Y-%m-%d_%H-%M')
 
     results_per_percent = []
+
     infidelities_per_percent = []
 
+
+    # Depth of two qubit gates for each percent
+    depth_2q_gates_per_percent = []
+
+    # Number of two qubit gates for each percent
+    quantity_2q_gates_per_percent = []
+
+    # Real percent applied for each percent
+    adapted_percent_per_percent = []
     
     for percent in percents:
 
@@ -281,6 +291,10 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
                        circuits_per_depth, 
                        shots_per_circuit, 
                        percent)
+
+        depth_2q_gates_per_percent.append(t.get2qDepth())
+        quantity_2q_gates_per_percent.append(t.get2qQuantity())
+        adapted_percent_per_percent.append(t.getAdaptedPercent())
 
         results, valid_depths = t.run()
 
@@ -314,6 +328,9 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
              qubits,
              circuits_per_depth,
              shots_per_circuit,
+             depth_2q_gates_per_percent,
+             quantity_2q_gates_per_percent,
+             adapted_percent_per_percent,
              filepath)
 
     plotMultipleBiRBTests(results_per_percent,
@@ -448,8 +465,15 @@ def plotCliffordVolume(results_per_percent, backend_name, qubits, file_name,
         plt.show()
 
 
-def saveData(results_per_percent, backend_name, qubits, circuits_per_depth,
-             shots_per_circuit, file_name):
+def saveData(results_per_percent, 
+             backend_name, 
+             qubits, 
+             circuits_per_depth,
+             shots_per_circuit, 
+             depth_2q_gates_per_percent,
+             quantity_2q_gates_per_percent,
+             adapted_percent_per_percent,
+             file_name):
     """
     Save the data of an experiment in a json file
 
@@ -466,6 +490,11 @@ def saveData(results_per_percent, backend_name, qubits, circuits_per_depth,
 
         file_name (str): Name of the json file to save the data
 
+        depth_2q_gates_per_percent (list[float]): Depth of two qubit gates for each percent
+
+        quantity_2q_gates_per_percent (list[float]): Number of two qubit gates for each percent
+
+        adapted_percent_per_percent (list[float]): Real percent applied for each percent
 
     """
 
@@ -477,7 +506,10 @@ def saveData(results_per_percent, backend_name, qubits, circuits_per_depth,
         "qubits": qubits,
         "circuits_per_depth": circuits_per_depth,
         "shots_per_circuit": shots_per_circuit,
-        "results_saved": results_to_save
+        "depth_2q_gates_per_percent": depth_2q_gates_per_percent,
+        "quantity_2q_gates_per_percent": quantity_2q_gates_per_percent,
+        "adapted_percent_per_percent": adapted_percent_per_percent,
+        "results_saved": results_to_save,
     }
 
 

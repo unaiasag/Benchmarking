@@ -50,6 +50,11 @@ class BiRBTestCP(BiRBTest):
 
         if(percent == 1.0):
             self.adapted_percent = 1.0
+            ( 
+                self.depth_2q_gate,
+                self.quantity_2q_gate
+            ) = self._getDepthCircuit("slice_transpile", 1000, self.percent)
+
         else:
             console = Console()
             panel = Panel(
@@ -59,7 +64,11 @@ class BiRBTestCP(BiRBTest):
             )
             console.print(Align.center(panel))
 
-            self.adapted_percent = self._findPercent("depth", 1000, self.tolerance)
+            (
+                self.adapted_percent, 
+                self.depth_2q_gate, 
+                self.quantity_2q_gate
+            ) = self._findPercent("depth", 1000, self.tolerance)
 
             panel = Panel.fit(
                 f"[bold yellow]ADAPTED PERCENT:[/] [bold magenta]{self.adapted_percent:.3f}[/]",
@@ -69,6 +78,15 @@ class BiRBTestCP(BiRBTest):
 
             console.print(panel)
 
+
+    def get2qDepth(self):
+        return self.depth_2q_gate
+    
+    def get2qQuantity(self):
+        return self.quantity_2q_gate
+
+    def getAdaptedPercent(self):
+        return self.adapted_percent
 
     def _findPercent(self, type, num_tries, tolerance):
 
@@ -110,10 +128,11 @@ class BiRBTestCP(BiRBTest):
             raise Exception (f"Parameter {type} not valid")
 
         # Get the depth and number of gates of the transpiled circuit
-        metrics_transpile_slice[0],\
-        metrics_transpile_slice[1] = self._getDepthCircuit("transpile_slice",
-                                                           num_tries,
-                                                           self.percent)
+        (
+            metrics_transpile_slice[0],
+            metrics_transpile_slice[1]
+        ) = self._getDepthCircuit("transpile_slice", num_tries, self.percent)
+
         console = Console()
 
         # Binary search
@@ -131,13 +150,12 @@ class BiRBTestCP(BiRBTest):
 
             # Get the depth and number of two qubit gates of the circuit
             # results of slicing and then transpiling
-            metrics_slice_transpile[0],\
-            metrics_slice_transpile[1] = self._getDepthCircuit("slice_transpile",
-                                                               num_tries,
-                                                               mid_percent)
+            (
+                metrics_slice_transpile[0],
+                metrics_slice_transpile[1] 
+            ) = self._getDepthCircuit("slice_transpile", num_tries, mid_percent)
 
 
-            # Paso 4: Mostrar métricas finales en tabla
             table = Table(title="📈 Metric results", border_style="green")
             table.add_column("Metric", justify="left", style="cyan", no_wrap=True)
             table.add_column("Goal", justify="center")
@@ -162,7 +180,7 @@ class BiRBTestCP(BiRBTest):
 
                 up_percent = mid_percent
 
-        return mid_percent
+        return mid_percent, metrics_slice_transpile[0], metrics_slice_transpile[1]
 
 
 
@@ -232,8 +250,7 @@ class BiRBTestCP(BiRBTest):
                 mean_gates += (lambda qc: 
                                     sum(1 for inst in qc.data if len(inst.qubits) > 1
                                ))(circuit)
-         
-
+             
         return mean_depth / num_tries, mean_gates / num_tries
 
     def _getPercent(self, qc, percent):
