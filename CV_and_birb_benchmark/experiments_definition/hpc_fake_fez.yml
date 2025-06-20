@@ -1,0 +1,140 @@
+config:
+  user: "david"
+  simulation_type: "fake"
+  output_path: "experiments_results"
+
+experiments:
+  - name: ibm_fake_fez_1q
+    params:
+      backend: "fake_fez"
+      qubits: 1
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [1.0]
+
+  - name: ibm_fake_fez_2q
+    params:
+      backend: "fake_fez"
+      qubits: 2
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [1.0]
+
+  - name: ibm_fake_fez_3q
+    params:
+      backend: "fake_fez"
+      qubits: 3
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [1.0]
+
+  - name: ibm_fake_fez_4q
+    params:
+      backend: "fake_fez"
+      qubits: 4
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [1.0]
+
+  - name: ibm_fake_fez_5q
+    params:
+      backend: "fake_fez"
+      qubits: 5
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [1.0]
+
+  - name: ibm_fake_fez_6q
+    params:
+      backend: "fake_fez"
+      qubits: 6
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [1.0]
+
+  - name: ibm_fake_fez_7q
+    params:
+      backend: "fake_fez"
+      qubits: 7
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.5, 0.75, 1.0]
+
+  - name: ibm_fake_fez_8q
+    params:
+      backend: "fake_fez"
+      qubits: 8
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.5, 0.75, 1.0]
+
+  - name: ibm_fake_fez_9q
+    params:
+      backend: "fake_fez"
+      qubits: 9
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.5, 0.75, 1.0]
+
+  - name: ibm_fake_fez_10q
+    params:
+      backend: "fake_fez"
+      qubits: 10
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.25, 0.5, 0.75, 1.0]
+
+  - name: ibm_fake_fez_11q
+    params:
+      backend: "fake_fez"
+      qubits: 11
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.1, 0.25, 0.5, 0.75]
+
+  - name: ibm_fake_fez_12q
+    params:
+      backend: "fake_fez"
+      qubits: 12
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.1, 0.25, 0.5, 0.75]
+      
+  - name: ibm_fake_fez_13q
+    params:
+      backend: "fake_fez"
+      qubits: 13
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.1, 0.25, 0.5, 0.75]
+
+  - name: ibm_fake_fez_14q
+    params:
+      backend: "fake_fez"
+      qubits: 14
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.1, 0.25, 0.5, 0.75]
+
+  - name: ibm_fake_fez_15q
+    params:
+      backend: "fake_fez"
+      qubits: 15
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [0.1, 0.5, 0.75]

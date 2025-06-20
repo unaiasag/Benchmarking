@@ -5,11 +5,56 @@ config:
   output_path: "experiments_results"
 
 experiments:
+  - name: ibm_fake_hanoi_1q
+    params:
+      backend: "fake_hanoi"
+      qubits: 1
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [1.0]
+
+  - name: ibm_fake_hanoi_2q
+    params:
+      backend: "fake_hanoi"
+      qubits: 2
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [1.0]
+
   - name: ibm_fake_hanoi_3q
     params:
       backend: "fake_hanoi"
       qubits: 3
       depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-      circuits_per_depth: 50
-      shots_per_circuit: 100000
-      percents: [0.5, 1.0]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [1.0]
+
+  - name: ibm_fake_hanoi_4q
+    params:
+      backend: "fake_hanoi"
+      qubits: 4
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [1.0]
+
+  - name: ibm_fake_hanoi_5q
+    params:
+      backend: "fake_hanoi"
+      qubits: 5
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [1.0]
+
+  - name: ibm_fake_hanoi_6q
+    params:
+      backend: "fake_hanoi"
+      qubits: 6
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
+      percents: [1.0]
