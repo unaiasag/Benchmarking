@@ -179,10 +179,12 @@ def main():
     args = parser.parse_args()
 
     if args.command == "run":
-        loadAndRunExperiments(args.filepath)
+        results = loadAndRunExperiments(args.filepath)
+        return results
 
     elif args.command == "show":
         readAndPlotExperiment(args.filepath)
+        return None
 
 
 if __name__ == '__main__':
