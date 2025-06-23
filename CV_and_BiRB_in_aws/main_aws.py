@@ -5,6 +5,8 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 from utils_aws.utils import *
+import warnings
+
 def loadAndRunExperiments(file):
     """
     Open a file with some experiments definition and execute each of the experiments  
@@ -189,4 +191,5 @@ def main():
 
 if __name__ == '__main__':
     # service = save_account('uballarin','6d85edce61e024b556238d6b6918bf03e78a04ab0c699151064c849fb74d8a14238076a7ab4e3b57f1e116ff4b4f9cf6412722908d7989e85ad78c0df8b8fa20','ibm-q-ikerbasque/vicomtech/elkartek-kubit','ibm_quantum')
+    warnings.filterwarnings("ignore", message="The Qiskit circuit contains barrier instructions that are ignored.")
     results = main()
