@@ -84,7 +84,7 @@ def plotMultipleBiRBTests(results_per_percent,
     # Save figure
     date_now = file_name[-21:-5]
     filename = f"Fit curve for {backend_name} with {qubits} qubits {date_now}.png"
-    filepath = os.path.join("images_results", filename)
+    filepath = os.path.join("images_results_aws", filename)
 
     plt.savefig(filepath)
 
@@ -137,7 +137,7 @@ def plotEvolutionPercent(results_per_percent,
     plt.tight_layout()
     date_now = file_name[-21:-5]    # Construir el nombre del archivo
     filename = f"Mean_infidelity_evolution_with_the_percent_of_the_clifford_{backend_name}_{qubits}q_{date_now}.png"
-    filepath = os.path.join("images_results", filename)
+    filepath = os.path.join("images_results_aws", filename)
 
     plt.savefig(filepath)
 
@@ -321,11 +321,21 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
     os.makedirs(output_folder, exist_ok=True)
     filepath = os.path.join(output_folder, file_name)
 
+
+        
+    # Save the data of the experiment
+    file_name = f"results_{backend}_{qubits}q_{start_date_str}.json"
+    os.makedirs(output_folder, exist_ok=True)
+    filepath = os.path.join(output_folder, file_name)
+
     results = saveData(results_per_percent,
              backend,
              qubits,
              circuits_per_depth,
              shots_per_circuit,
+             depth_2q_gates_per_percent,
+             quantity_2q_gates_per_percent,
+             adapted_percent_per_percent,
              filepath)
 
     plotMultipleBiRBTests(results_per_percent,
@@ -345,6 +355,7 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
                        qubits,
                        file_name,
                        show)
+
     return results
 
 def plotCliffordVolume(results_per_percent, backend_name, qubits, file_name,
@@ -453,7 +464,7 @@ def plotCliffordVolume(results_per_percent, backend_name, qubits, file_name,
     # Save figure
     date_now = file_name[-21:-5]
     filename = f"Clifford_volume_{backend_name}_with_{qubits}_qubits_{date_now}.png"
-    filepath = os.path.join("images_results", filename)
+    filepath = os.path.join("images_results_aws", filename)
 
     plt.savefig(filepath)
 
@@ -461,8 +472,15 @@ def plotCliffordVolume(results_per_percent, backend_name, qubits, file_name,
         plt.show()
 
 
-def saveData(results_per_percent, backend_name, qubits, circuits_per_depth,
-             shots_per_circuit, file_name):
+def saveData(results_per_percent, 
+             backend_name, 
+             qubits, 
+             circuits_per_depth,
+             shots_per_circuit, 
+             depth_2q_gates_per_percent,
+             quantity_2q_gates_per_percent,
+             adapted_percent_per_percent,
+             file_name):
     """
     Save the data of an experiment in a json file
 
