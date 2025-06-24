@@ -259,8 +259,18 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
     start_date_str = datetime.today().strftime('%Y-%m-%d_%H-%M')
 
     results_per_percent = []
+
     infidelities_per_percent = []
 
+
+    # Depth of two qubit gates for each percent
+    depth_2q_gates_per_percent = []
+
+    # Number of two qubit gates for each percent
+    quantity_2q_gates_per_percent = []
+
+    # Real percent applied for each percent
+    adapted_percent_per_percent = []
     
     for percent in percents:
 
@@ -282,6 +292,10 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
                        shots_per_circuit, 
                        percent)
 
+        depth_2q_gates_per_percent.append(t.get2qDepth())
+        quantity_2q_gates_per_percent.append(t.get2qQuantity())
+        adapted_percent_per_percent.append(t.getAdaptedPercent())
+
         results, valid_depths = t.run()
 
         (
@@ -300,9 +314,8 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
                                     mean_infidelity, 
                                     mean_per_depth))
 
-    
+        print()
 
-        
     # Save the data of the experiment
     file_name = f"results_{backend}_{qubits}q_{start_date_str}.json"
     os.makedirs(output_folder, exist_ok=True)
@@ -477,7 +490,10 @@ def saveData(results_per_percent, backend_name, qubits, circuits_per_depth,
         "qubits": qubits,
         "circuits_per_depth": circuits_per_depth,
         "shots_per_circuit": shots_per_circuit,
-        "results_saved": results_to_save
+        "depth_2q_gates_per_percent": depth_2q_gates_per_percent,
+        "quantity_2q_gates_per_percent": quantity_2q_gates_per_percent,
+        "adapted_percent_per_percent": adapted_percent_per_percent,
+        "results_saved": results_to_save,
     }
 
 
