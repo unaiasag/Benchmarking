@@ -17,7 +17,9 @@ def loadAndRunExperiments(file):
 
     try:
         with open(file, "r") as f:
-            data = json.load(f)
+            data = yaml.safe_load(f)
+        # with open(file, "r") as f:
+        #     data = json.load(f)
 
     except Exception:
         print(f"[ERROR] Could not read the file :{file}")
