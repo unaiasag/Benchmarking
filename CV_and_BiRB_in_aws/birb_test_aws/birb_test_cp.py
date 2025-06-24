@@ -52,6 +52,11 @@ class BiRBTestCP(BiRBTest):
 
         if(percent == 1.0):
             self.adapted_percent = 1.0
+            ( 
+                self.depth_2q_gate,
+                self.quantity_2q_gate
+            ) = self._getDepthCircuit("slice_transpile", 1000, self.percent)
+
         else:
             console = Console()
             panel = Panel(
@@ -60,8 +65,12 @@ class BiRBTestCP(BiRBTest):
                 border_style="green",
             )
             console.print(Align.center(panel))
-            print("self.tolerance =", getattr(self, "tolerance", "No definido"))
-            self.adapted_percent = self._findPercent("depth", 1000, self.tolerance)
+
+            (
+                self.adapted_percent, 
+                self.depth_2q_gate, 
+                self.quantity_2q_gate
+            ) = self._findPercent("depth", 1000, self.tolerance)
 
             panel = Panel.fit(
                 f"[bold yellow]ADAPTED PERCENT:[/] [bold magenta]{self.adapted_percent:.3f}[/]",
@@ -71,7 +80,14 @@ class BiRBTestCP(BiRBTest):
 
             console.print(panel)
 
+    def get2qDepth(self):
+        return self.depth_2q_gate
+    
+    def get2qQuantity(self):
+        return self.quantity_2q_gate
 
+    def getAdaptedPercent(self):
+        return self.adapted_percent
     def _findPercent(self, type, num_tries, tolerance):
 
         """
@@ -164,7 +180,7 @@ class BiRBTestCP(BiRBTest):
 
                 up_percent = mid_percent
 
-        return mid_percent
+        return mid_percent, metrics_slice_transpile[0], metrics_slice_transpile[1]
 
 
 
@@ -257,9 +273,7 @@ class BiRBTestCP(BiRBTest):
         for i in range(start, end):
             for node in layers[i]['graph'].op_nodes():
                 qc2.append(node.op, node.qargs, node.cargs)
-        clifford_gates = ['x', 'y', 'z', 'h', 's', 'sdg', 'cx', 'cz', 'swap']
-
-        qc2 = transpile(qc2, basis_gates=clifford_gates, optimization_level=3)
+        
         return qc2
     
     @override

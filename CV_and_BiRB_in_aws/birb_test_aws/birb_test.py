@@ -250,10 +250,7 @@ class BiRBTest(ABC):
             clifford_circuit = self._generateRandomLayer()
             qc = qc.compose(clifford_circuit) 
 
-        # Transpilar a un conjunto de puertas Clifford
-        clifford_gates = ['x', 'y', 'z', 'h', 's', 'sdg', 'cx', 'cz', 'swap']
-        qc = transpile(qc, basis_gates=clifford_gates, optimization_level=0)
-        
+               
         return qc
 ############################################################################################################
     def _pauliMeasurementCircuit(self, pauli):
