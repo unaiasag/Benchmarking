@@ -17,10 +17,11 @@ def loadAndRunExperiments(file):
 
     try:
         with open(file, "r") as f:
-            data = yaml.safe_load(f)
+            data = json.load(f)
 
     except Exception:
         print(f"[ERROR] Could not read the file :{file}")
+        return None
 
     # Validate all the parameters of one experiment
     def validateExperimentParams(params, name="(sin nombre)"):
@@ -189,7 +190,16 @@ def main():
         return None
 
 
-if __name__ == '__main__':
-    # service = save_account('uballarin','6d85edce61e024b556238d6b6918bf03e78a04ab0c699151064c849fb74d8a14238076a7ab4e3b57f1e116ff4b4f9cf6412722908d7989e85ad78c0df8b8fa20','ibm-q-ikerbasque/vicomtech/elkartek-kubit','ibm_quantum')
+def run(input_data:dict, solver_params:dict, extra_arguments:dict) -> dict:
+
+    #
+    # Add your solver's code here, or call it from here if it is already implemented in another module
+    #
     warnings.filterwarnings("ignore", message="The Qiskit circuit contains barrier instructions that are ignored.")
-    results = main()
+    output = main()
+
+    # And this is the output it returns. It must be a dictionary.
+    return output
+if __name__ == "__main__":
+    run(input_data={}, solver_params={}, extra_arguments={})
+    # This is just for testing purposes, you can remove it if you don't need it
