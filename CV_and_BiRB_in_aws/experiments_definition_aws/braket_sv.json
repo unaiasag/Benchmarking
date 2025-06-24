@@ -1,0 +1,20 @@
+{
+  "config": {
+    "user": "uballarin",
+    "simulation_type": "ideal",
+    "output_path": "experiments_results_aws"
+  },
+  "experiments": [
+    {
+      "name": "aws_braket_sv_3q",
+      "params": {
+        "backend": "braket_sv",
+        "qubits": 3,
+        "depths": [1, 2, 4, 6, 17, 36, 65, 100, 150, 220],
+        "circuits_per_depth": 100,
+        "shots_per_circuit": 10000,
+        "percents": [0.5, 0.7, 1.0]
+      }
+    }
+  ]
+}
