@@ -78,6 +78,9 @@ def plotMultipleBiRBTests(results_per_percent,
     ax.set_title("Fit curve for " + backend_name + " with " 
                  + str(qubits) + " qubits")
 
+    ax.set_xscale('log')
+    ax.set_xlim(xmin=1)
+
     plt.legend(loc="upper right") 
     plt.tight_layout()
 
