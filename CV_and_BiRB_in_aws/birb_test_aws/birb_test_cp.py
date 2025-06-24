@@ -237,7 +237,8 @@ class BiRBTestCP(BiRBTest):
                 mean_gates += (lambda qc: 
                                     sum(1 for inst in qc.data if len(inst.qubits) > 1
                                ))(circuit)
-                braket_circuit = to_braket(circuit)  # Exporta QASM desde Qiskit
+                #No transpile the circuit because braket does not support transpilation
+                braket_circuit = to_braket(circuit)  
 
          
 
