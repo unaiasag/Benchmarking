@@ -1,20 +1,18 @@
 import random 
 from typing import override
 import numpy as np
-
+from qiskit_braket_provider import BraketLocalBackend
 from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import random_clifford
 from qiskit.converters import circuit_to_dag
 
-from braket.circuits import Circuit
 from rich.console import Console
 from rich.panel import Panel
 from rich.align import Align
 from rich.table import Table
 from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
-from qiskit_braket_provider import to_braket
 
-from birb_test_aws import BiRBTest
+from birb_test import BiRBTest
 
 class BiRBTestCP(BiRBTest):
     """
@@ -80,6 +78,7 @@ class BiRBTestCP(BiRBTest):
 
             console.print(panel)
 
+
     def get2qDepth(self):
         return self.depth_2q_gate
     
@@ -88,6 +87,7 @@ class BiRBTestCP(BiRBTest):
 
     def getAdaptedPercent(self):
         return self.adapted_percent
+
     def _findPercent(self, type, num_tries, tolerance):
 
         """
@@ -128,10 +128,11 @@ class BiRBTestCP(BiRBTest):
             raise Exception (f"Parameter {type} not valid")
 
         # Get the depth and number of gates of the transpiled circuit
-        metrics_transpile_slice[0],\
-        metrics_transpile_slice[1] = self._getDepthCircuit("transpile_slice",
-                                                           num_tries,
-                                                           self.percent)
+        (
+            metrics_transpile_slice[0],
+            metrics_transpile_slice[1]
+        ) = self._getDepthCircuit("transpile_slice", num_tries, self.percent)
+
         console = Console()
 
         # Binary search
@@ -149,13 +150,12 @@ class BiRBTestCP(BiRBTest):
 
             # Get the depth and number of two qubit gates of the circuit
             # results of slicing and then transpiling
-            metrics_slice_transpile[0],\
-            metrics_slice_transpile[1] = self._getDepthCircuit("slice_transpile",
-                                                               num_tries,
-                                                               mid_percent)
+            (
+                metrics_slice_transpile[0],
+                metrics_slice_transpile[1] 
+            ) = self._getDepthCircuit("slice_transpile", num_tries, mid_percent)
 
 
-            # Paso 4: Mostrar métricas finales en tabla
             table = Table(title="📈 Metric results", border_style="green")
             table.add_column("Metric", justify="left", style="cyan", no_wrap=True)
             table.add_column("Goal", justify="center")
@@ -226,9 +226,22 @@ class BiRBTestCP(BiRBTest):
             for _ in range(1, num_tries + 1):
                 progress.update(task, advance=1)
                 unitary = random_clifford(self.qubits)
-                qc = QuantumCircuit(self.qubits)
-                qc.append(unitary, range(self.qubits)) 
-                circuit = self._getPercent(qc, percent) 
+
+                if(method == "transpile_slice"):
+                    qc = QuantumCircuit(self.qubits)
+                    qc.append(unitary, range(self.qubits)) 
+                    tranpiled_qc = transpile(qc, self.backend, optimization_level=3)
+                    circuit = self._getPercent(tranpiled_qc, percent) 
+
+                elif method == "slice_transpile":
+                    qc = unitary.to_circuit()
+                    reduced_qc = self._getPercent(qc, percent) 
+                    circuit = transpile(reduced_qc, 
+                                        backend=self.backend,
+                                        optimization_level=3)
+
+                else:
+                    raise Exception(f"Method {method} not valid")
              
                 # Count the number of layers of two qubit gates
                 mean_depth += circuit.depth(lambda instr: len(instr.qubits) == 2)
@@ -237,11 +250,7 @@ class BiRBTestCP(BiRBTest):
                 mean_gates += (lambda qc: 
                                     sum(1 for inst in qc.data if len(inst.qubits) > 1
                                ))(circuit)
-                #No transpile the circuit because braket does not support transpilation
-                braket_circuit = to_braket(circuit)  
-
-         
-
+             
         return mean_depth / num_tries, mean_gates / num_tries
 
     def _getPercent(self, qc, percent):
@@ -274,9 +283,8 @@ class BiRBTestCP(BiRBTest):
         for i in range(start, end):
             for node in layers[i]['graph'].op_nodes():
                 qc2.append(node.op, node.qargs, node.cargs)
-        
         return qc2
-    
+
     @override
     def _generateRandomLayer(self):
 

@@ -3,8 +3,8 @@ from typing import override
 
 from qiskit.quantum_info import random_clifford
 from qiskit import QuantumCircuit
-
-from birb_test_aws import BiRBTest
+from qiskit_braket_provider import BraketLocalBackend
+from birb_test import BiRBTest
 
 class BiRBTest2q1q(BiRBTest):
     """

@@ -11,12 +11,12 @@ from qiskit_ibm_runtime import QiskitRuntimeService
 from qiskit_aer.noise import NoiseModel
 from qiskit_ibm_runtime import SamplerV2
 from qiskit_ibm_runtime.fake_provider import FakeProviderForBackendV2 
-from braket.devices import LocalSimulator
+from qiskit_braket_provider import BraketLocalBackend
+
 from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
 from rich.console import Console
 from rich.panel import Panel
 from rich.align import Align
-from qiskit_braket_provider import to_braket
 
 class BiRBTest(ABC):
     """
@@ -54,20 +54,42 @@ class BiRBTest(ABC):
         self.backend_name = backend_name
         self.sim_type = sim_type
         
-        if(self.sim_type == "ideal"):
+        service = QiskitRuntimeService(name=account_name)
+
+        if(self.sim_type == "aer"):
             try:
-                self.backend = LocalSimulator(self.backend_name)
+                backend = service.backend(backend_name)
             except Exception:
                 print("Error: Backend " + backend_name + " not found.")
                 sys.exit(1)
-        elif(self.sim_type == "real_simulator"):
+
+            noise_real_model = NoiseModel.from_backend(backend)
+
+            # Create noisy simulator backend
+            self.sim_noise = AerSimulator(noise_model=noise_real_model)
+            self.passmanager = generate_preset_pass_manager(optimization_level=3, 
+                                                            backend=self.sim_noise)
+
+        elif(self.sim_type == "fake" or self.sim_type == "noiseless"):
             try:
-                self.backend = LocalSimulator(self.backend_name)
+                self.backend = FakeProviderForBackendV2().backend(backend_name)
             except Exception:
                 print("Error: Backend " + backend_name + " not found.")
                 sys.exit(1)
+
+            self.backend.refresh(service)
+            self.sampler = SamplerV2(self.backend)
+        elif(self.sim_type == "braket"):
+            try:
+                self.backend = BraketLocalBackend(backend_name)
+            except Exception:
+                print("Error: Backend " + backend_name + " not found.")
+                sys.exit(1)
+            self.passmanager = generate_preset_pass_manager(optimization_level=3, 
+                                                            backend=self.backend)
+
         else:
-            print("Select a valid simulator: 'aws'")
+            print("Select a valid simulator: 'fake' or 'aer'")
             sys.exit(1)
 
 
@@ -239,20 +261,23 @@ class BiRBTest(ABC):
         that must be implemented by each subclass.
         """
         pass
-#####Cambio pq me decia que estaba usando una puerta u q daba error en el pauli ############################
+
+
     def _generateRandomCircuit(self, depth):
         """
         Generates a quantum circuit composed of 'depth' layers, each formed by
         single- and two-qubit Clifford gates.
+
+        Returns:
+            QuantumCircuit: The constructed quantum circuit.
         """
         qc = QuantumCircuit(self.qubits) 
         for _ in range(0, depth):
             clifford_circuit = self._generateRandomLayer()
             qc = qc.compose(clifford_circuit) 
 
-               
         return qc
-############################################################################################################
+
     def _pauliMeasurementCircuit(self, pauli):
         """
         Builds a quantum circuit to perform measurement in the specified Pauli basis.
@@ -347,13 +372,35 @@ class BiRBTest(ABC):
             the number of times that bitstring was observed.
         """
 
-        if(self.sim_type == 'ideal'):
-            pub_result = self.backend.run(circuit,
-                                          shots=self.shots_per_circuit).result()
+        transpiled_circuit = transpile(circuit, self.backend, optimization_level=3)
+        if(self.sim_type == 'fake'):
+            pub_result = self.sampler.run([transpiled_circuit],
+                                          shots=self.shots_per_circuit).result()[0]
 
-            counts_sim = pub_result.measurement_counts
-            counts_sim = {bin(int(k))[2:].zfill(len(circuit.qubits)): v 
-                     for k, v in counts_sim.items()}
+            counts_sim = pub_result.data.meas.get_counts()
+
+        elif (self.sim_type == 'noiseless'):
+
+            simulator = AerSimulator(
+                basis_gates=self.backend.configuration().basis_gates,
+                coupling_map=self.backend.configuration().coupling_map
+            )
+
+            result = simulator.run(transpiled_circuit, 
+                                   shots=self.shots_per_circuit).result()
+            counts_sim = result.get_counts(0)
+        elif(self.sim_type == 'braket'):
+            # Transpile the circuit for the Braket backend
+            circuit_braket = self.passmanager.run(transpiled_circuit)
+            result_sim = self.backend.run(circuit_braket,
+                                          shots=self.shots_per_circuit).result()
+            counts_sim = result_sim.get_counts()
+        else:
+            circuit_noise = self.passmanager.run(circuit) 
+            result_sim = self.sim_noise.run(circuit_noise,
+                                            shots=self.shots_per_circuit).result()
+            counts_sim = result_sim.get_counts(0)
+
         return counts_sim
 
 
@@ -383,9 +430,10 @@ class BiRBTest(ABC):
             estabilizer_circuit
             .compose(random_circuit)
             .compose(self._pauliMeasurementCircuit(final_pauli)))
+
         final_circuit.measure_all()
-        final_circuit = to_braket(final_circuit)
-        # Run the circuit
+ 
+        # Run the circuit 
         counts_sim = self._runCircuitSimulation(final_circuit)
 
         mean = 0 
