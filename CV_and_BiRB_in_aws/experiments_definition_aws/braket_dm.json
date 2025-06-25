@@ -6,9 +6,9 @@
   },
   "experiments": [
     {
-      "name": "aws_braket_sv_3q",
+      "name": "aws_braket_dm_3q",
       "params": {
-        "backend": "braket_sv",
+        "backend": "braket_dm",
         "qubits": 3,
         "depths": [1, 2, 4, 6, 17, 36, 65, 100, 150, 220],
         "circuits_per_depth": 100,
