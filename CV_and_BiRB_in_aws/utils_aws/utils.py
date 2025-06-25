@@ -12,7 +12,7 @@ from rich.align import Align
 
 from datetime import datetime
 
-from birb_test_aws import BiRBTestCP
+from birb_test import BiRBTestCP
 
 def plotMultipleBiRBTests(results_per_percent, 
                           backend_name, 
@@ -78,13 +78,16 @@ def plotMultipleBiRBTests(results_per_percent,
     ax.set_title("Fit curve for " + backend_name + " with " 
                  + str(qubits) + " qubits")
 
+    ax.set_xscale('log')
+    ax.set_xlim(xmin=1)
+
     plt.legend(loc="upper right") 
     plt.tight_layout()
 
     # Save figure
     date_now = file_name[-21:-5]
     filename = f"Fit curve for {backend_name} with {qubits} qubits {date_now}.png"
-    filepath = os.path.join("images_results_aws", filename)
+    filepath = os.path.join("images_results", filename)
 
     plt.savefig(filepath)
 
@@ -137,7 +140,7 @@ def plotEvolutionPercent(results_per_percent,
     plt.tight_layout()
     date_now = file_name[-21:-5]    # Construir el nombre del archivo
     filename = f"Mean_infidelity_evolution_with_the_percent_of_the_clifford_{backend_name}_{qubits}q_{date_now}.png"
-    filepath = os.path.join("images_results_aws", filename)
+    filepath = os.path.join("images_results", filename)
 
     plt.savefig(filepath)
 
@@ -316,11 +319,6 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
 
         print()
 
-    # Save the data of the experiment
-    file_name = f"results_{backend}_{qubits}q_{start_date_str}.json"
-    os.makedirs(output_folder, exist_ok=True)
-    filepath = os.path.join(output_folder, file_name)
-
 
         
     # Save the data of the experiment
@@ -328,7 +326,7 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
     os.makedirs(output_folder, exist_ok=True)
     filepath = os.path.join(output_folder, file_name)
 
-    results = saveData(results_per_percent,
+    saveData(results_per_percent,
              backend,
              qubits,
              circuits_per_depth,
@@ -355,8 +353,6 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
                        qubits,
                        file_name,
                        show)
-
-    return results
 
 def plotCliffordVolume(results_per_percent, backend_name, qubits, file_name,
                        show=False):
@@ -464,7 +460,7 @@ def plotCliffordVolume(results_per_percent, backend_name, qubits, file_name,
     # Save figure
     date_now = file_name[-21:-5]
     filename = f"Clifford_volume_{backend_name}_with_{qubits}_qubits_{date_now}.png"
-    filepath = os.path.join("images_results_aws", filename)
+    filepath = os.path.join("images_results", filename)
 
     plt.savefig(filepath)
 
@@ -497,6 +493,11 @@ def saveData(results_per_percent,
 
         file_name (str): Name of the json file to save the data
 
+        depth_2q_gates_per_percent (list[float]): Depth of two qubit gates for each percent
+
+        quantity_2q_gates_per_percent (list[float]): Number of two qubit gates for each percent
+
+        adapted_percent_per_percent (list[float]): Real percent applied for each percent
 
     """
 
@@ -519,4 +520,3 @@ def saveData(results_per_percent,
         json.dump(data, f, indent=4)
 
     print("Data saved in file: " + file_name)
-    return data
