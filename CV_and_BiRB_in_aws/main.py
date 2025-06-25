@@ -4,10 +4,11 @@ import json
 from pathlib import Path
 from rich.console import Console
 from rich.table import Table
-
+import re
 from utils.utils import *
 import warnings
 import urllib3
+
 
 def loadAndRunExperiments(file):
     """
@@ -72,7 +73,7 @@ def loadAndRunExperiments(file):
         name = exp.get("name", "(no name)")
         params = exp.get("params", {})
         validateExperimentParams(params, name)
-
+    results = {}
     # Run the experiments
     for exp in experiments:
         name = exp.get("name", "(no name)")
@@ -95,7 +96,7 @@ def loadAndRunExperiments(file):
         console.print(table)
 
 
-        runExperiment(user=user,
+        result = runExperiment(user=user,
                       sim_type=simulation_type,
                       output_folder=output_folder,
                       backend=params['backend'],
@@ -105,6 +106,16 @@ def loadAndRunExperiments(file):
                       shots_per_circuit=params['shots_per_circuit'],
                       percents=params['percents'],
                       show=False)
+        results[name] = result
+    # first_backend = experiments[0]["params"]["backend"] if experiments else "unknown"
+
+    # combined_filename = f"data_combined_{first_backend}.json"
+    # combined_path = Path(output_folder) / combined_filename
+
+    # # Guardamos todos los resultados en un JSON combinado
+    # with open(combined_path, "w") as f:
+    #     json.dump(results, f, indent=2)
+    return results
 
 
 
@@ -186,14 +197,33 @@ def main():
     args = parser.parse_args()
 
     if args.command == "run":
-        loadAndRunExperiments(args.filepath)
+        results =loadAndRunExperiments(args.filepath)
+        return results
 
     elif args.command == "show":
         readAndPlotExperiment(args.filepath)
+    
+def run(input_data:dict, solver_params:dict, extra_arguments:dict) -> dict:
 
-
-if __name__ == '__main__':
+    #
+    # Add your solver's code here, or call it from here if it is already implemented in another module
     # Filtra el warning específico
     warnings.filterwarnings("ignore", category=UserWarning, module="qiskit_braket_provider.providers.adapter")
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    main()
+    warnings.filterwarnings(
+        "ignore",
+        category=UserWarning,
+        message=re.escape(
+            'You are running a noise-free circuit on the density matrix simulator. '
+            'Consider running this circuit on the state vector simulator: LocalSimulator("default") '
+            'for a better user experience.'
+        )
+    )
+    output = main()
+
+    # And this is the output it returns. It must be a dictionary.
+    return output
+
+if __name__ == '__main__':
+    
+    run(input_data={}, solver_params={}, extra_arguments={})
