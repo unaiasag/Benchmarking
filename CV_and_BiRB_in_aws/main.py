@@ -6,6 +6,8 @@ from rich.console import Console
 from rich.table import Table
 
 from utils.utils import *
+import warnings
+import urllib3
 
 def loadAndRunExperiments(file):
     """
@@ -17,10 +19,15 @@ def loadAndRunExperiments(file):
 
     try:
         with open(file, "r") as f:
-            data = yaml.safe_load(f)
-
+            # Intenta leer como JSON
+            data = json.load(f)
     except Exception:
-        print(f"[ERROR] Could not read the file :{file}")
+        try:
+            with open(file, "r") as f:
+                # Si falla JSON, intenta como YAML
+                data = yaml.safe_load(f)
+        except Exception:
+            print(f"[ERROR] Could not read the file :{file}")
 
 
     # Validate all the parameters of one experiment
@@ -74,7 +81,7 @@ def loadAndRunExperiments(file):
 
         console = Console()
 
-        table = Table(title=f"🧪 Expermient {name} detalis", border_style="magenta")
+        table = Table(title=f"🧪 Expermient {name} details", border_style="magenta")
         table.add_column("Parameter", style="bold cyan")
         table.add_column("Value", style="white")
 
@@ -186,4 +193,7 @@ def main():
 
 
 if __name__ == '__main__':
+    # Filtra el warning específico
+    warnings.filterwarnings("ignore", category=UserWarning, module="qiskit_braket_provider.providers.adapter")
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     main()
