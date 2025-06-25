@@ -326,7 +326,7 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
     os.makedirs(output_folder, exist_ok=True)
     filepath = os.path.join(output_folder, file_name)
 
-    saveData(results_per_percent,
+    result = saveData(results_per_percent,
              backend,
              qubits,
              circuits_per_depth,
@@ -353,6 +353,7 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
                        qubits,
                        file_name,
                        show)
+    return result
 
 def plotCliffordVolume(results_per_percent, backend_name, qubits, file_name,
                        show=False):
@@ -520,3 +521,4 @@ def saveData(results_per_percent,
         json.dump(data, f, indent=4)
 
     print("Data saved in file: " + file_name)
+    return data
