@@ -1,5 +1,6 @@
 import os
 import json
+import pickle
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
@@ -320,11 +321,14 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
         print()
 
 
-        
     # Save the data of the experiment
-    file_name = f"results_{backend}_{qubits}q_{start_date_str}.json"
+    file_name_results = f"results_{backend}_{qubits}q_{start_date_str}.json"
+    file_name_qubit_properties = f"qubit_properties_{backend}_{qubits}q_{start_date_str}.json"
+    file_name_target = f"qubit_properties_{backend}_{qubits}q_{start_date_str}.pkl"
     os.makedirs(output_folder, exist_ok=True)
-    filepath = os.path.join(output_folder, file_name)
+    filepath_results = os.path.join(output_folder, file_name_results)
+    filepath_qubit_properties = os.path.join(output_folder, file_name_qubit_properties)
+    filepath_target = os.path.join(output_folder, file_name_target)
 
     saveData(results_per_percent,
              backend,
@@ -334,24 +338,47 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
              depth_2q_gates_per_percent,
              quantity_2q_gates_per_percent,
              adapted_percent_per_percent,
-             filepath)
+             filepath_results)
+    
+    qubit_properties = t.backend.properties()
+    qubit_properties_list = []
+    for i in range(qubits):
+        qubit_property_dict = {}
+        qubit_property_dict["number"] = i
+        qubit_property_dict["T1"] = qubit_properties.qubit_property(i)["T1"][0]
+        qubit_property_dict["T2"] = qubit_properties.qubit_property(i)["T2"][0]
+        qubit_property_dict["frequency"] = qubit_properties.qubit_property(i)["frequency"][0]
+        qubit_property_dict["anharmonicity"] = qubit_properties.qubit_property(i)["anharmonicity"][0]
+        qubit_property_dict["readout_error"] = qubit_properties.qubit_property(i)["readout_error"][0]
+        qubit_property_dict["prob_meas0_prep1"] = qubit_properties.qubit_property(i)["prob_meas0_prep1"][0]
+        qubit_property_dict["prob_meas1_prep0"] = qubit_properties.qubit_property(i)["prob_meas1_prep0"][0]
+        qubit_property_dict["readout_length"] = qubit_properties.qubit_property(i)["readout_length"][0]
+        qubit_properties_list.append(qubit_property_dict)
+    target = t.backend.target
+    
+    saveCalibration(backend,
+                    qubits,
+                    qubit_properties_list,
+                    target,
+                    filepath_qubit_properties,
+                    filepath_target)
 
     plotMultipleBiRBTests(results_per_percent,
                           backend,
                           qubits,
-                          file_name,
+                          file_name_results,
                           show)
 
     plotEvolutionPercent(results_per_percent,
                          backend,
-                         file_name, 
+                         file_name_results, 
                          qubits,
                          show)
 
     plotCliffordVolume(results_per_percent, 
                        backend,
                        qubits,
-                       file_name,
+                       file_name_results,
                        show)
 
 def plotCliffordVolume(results_per_percent, backend_name, qubits, file_name,
@@ -520,3 +547,40 @@ def saveData(results_per_percent,
         json.dump(data, f, indent=4)
 
     print("Data saved in file: " + file_name)
+
+
+def saveCalibration(backend_name, 
+                    qubits, 
+                    qubit_properties_list,
+                    target,
+                    filename_qubit_properties,
+                    filename_target):
+    """
+    Save the data of an experiment in a json file
+
+    Args: 
+        backend_name (str): Name of the processor who runned the experiment.
+
+        qubits (int): Number of qubits used in the experiment.
+
+        qubit_properties_list (list): List of dictionaries containing the calibration of each qubit.
+
+        target (object): qiskit object containing the calibration of connections among qubits.
+
+    """
+
+    
+    data = {
+        "backend_name": backend_name,
+        "qubits": qubits,
+        "qubit_properties_list": qubit_properties_list,
+    }
+
+
+    with open(filename_qubit_properties, "w") as f1:
+        json.dump(data, f1, indent=4)
+
+    with open(filename_target, "wb") as f2:
+        pickle.dump(target, f2)
+
+    print("Calibration data saved in files: " + filename_qubit_properties + " and " + filename_target)
