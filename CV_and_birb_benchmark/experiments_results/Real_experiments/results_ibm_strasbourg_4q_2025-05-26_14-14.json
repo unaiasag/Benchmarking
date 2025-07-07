@@ -1,7 +1,7 @@
 {
     "backend_name": "ibm_strasbourg",
     "qubits": 4,
-    "results_per_percent": [
+    "results_saved": [
         [
             0.3,
             [

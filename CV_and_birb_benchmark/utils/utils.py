@@ -48,10 +48,13 @@ def plotMultipleBiRBTests(results_per_percent,
         percent, results_per_depth, valid_depths, A_fit, p_fit,\
         mean_infidelity, mean_per_depth = data
 
-
+        # Scale in logarithmic way
+        widths = np.log2(valid_depths)
+        widths = widths / np.max(widths) 
+        widths = widths * 2.0 + 0.1
 
         # Plot the exact points and scatter 
-        parts = plt.violinplot(results_per_depth, positions=valid_depths, widths=5,
+        parts = plt.violinplot(results_per_depth, positions=valid_depths, widths=widths,
                                showmeans=True, showextrema=False, showmedians=False)
 
         for pc in parts['bodies']:
@@ -66,7 +69,6 @@ def plotMultipleBiRBTests(results_per_percent,
         f_fit = [A_fit * p_fit ** m for m in m_fit]
         plt.plot(m_fit, f_fit, label='Percent: ' + str(percent) 
                  + ', infidelity: '+str(mean_infidelity), color=colors[i])
-
 
     plt.xlabel("Benchmark Depth")
     plt.ylabel("Polarization")

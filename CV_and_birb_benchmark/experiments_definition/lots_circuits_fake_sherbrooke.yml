@@ -1,0 +1,15 @@
+config:
+  user: "david"
+  simulation_type: "fake"
+  output_path: "experiments_results"
+
+experiments:
+  - name: ibm_fake_sherbrooke _4q
+    params:
+      backend: "fake_sherbrooke"
+      qubits: 4
+      depths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 17, 30, 80, 100, 150]
+      circuits_per_depth: 1000
+      shots_per_circuit: 1000
+      percents: [0.5, 1.0]
+

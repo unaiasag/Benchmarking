@@ -68,7 +68,7 @@ class BiRBTestCP(BiRBTest):
                 self.adapted_percent, 
                 self.depth_2q_gate, 
                 self.quantity_2q_gate
-            ) = self._findPercent("depth", 1000, self.tolerance)
+            ) = self._findPercent("quantity", 1000, self.tolerance)
 
             panel = Panel.fit(
                 f"[bold yellow]ADAPTED PERCENT:[/] [bold magenta]{self.adapted_percent:.3f}[/]",
@@ -244,7 +244,7 @@ class BiRBTestCP(BiRBTest):
                     raise Exception(f"Method {method} not valid")
              
                 # Count the number of layers of two qubit gates
-                mean_depth += circuit.depth(lambda instr: len(instr.qubits) == 2)
+                mean_depth += circuit.depth(lambda instr: len(instr.qubits) > 2)
 
                 # Count the total number of two qubit gates
                 mean_gates += (lambda qc: 
@@ -275,7 +275,7 @@ class BiRBTestCP(BiRBTest):
         dag = circuit_to_dag(qc)
         layers = list(dag.layers())
         total = len(layers)
-        num = int(np.ceil(total * percent))
+        num = int(np.floor(total * percent))
         start = random.randint(0, total - num)
         end = start + num
 

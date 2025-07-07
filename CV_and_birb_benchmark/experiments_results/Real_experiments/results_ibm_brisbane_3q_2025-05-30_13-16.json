@@ -1,7 +1,7 @@
 {
     "backend_name": "ibm_brisbane",
     "qubits": 3,
-    "results_per_percent": [
+    "results_saved": [
         [
             0.5,
             [

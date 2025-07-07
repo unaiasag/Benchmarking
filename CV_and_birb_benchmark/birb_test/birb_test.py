@@ -435,7 +435,7 @@ class BiRBTest(ABC):
 
         return mean
 
-    def run(self, eps=1e-5):
+    def run(self, eps=1e-4):
 
         """
         Runs the test using the provided data. If the results fall below the specified
@@ -509,26 +509,5 @@ class BiRBTest(ABC):
                 if(statistics.mean(depth_result) < eps):
                     break
 
-
-
-        #results_per_depth = []
-        #valid_depths = []
-        #for depth in self.depths:
-        #    depth_result = []
-        #    for i in range(0, self.circuits_per_depth):
-        #        result = self._runCircuit(depth) 
-        #        depth_result.append(result)
-
-        #        # For debugging
-        #        print("Depth: "+ str(depth) + " count " + str((i+1)) + " result ", result)
-
-
-        #    results_per_depth.append(depth_result)
-        #    valid_depths.append(depth)
-
-        #    # If it is so low depth we not continue
-        #    if(statistics.mean(depth_result) < eps):
-        #        break
-        #
 
         return results_per_depth, valid_depths
