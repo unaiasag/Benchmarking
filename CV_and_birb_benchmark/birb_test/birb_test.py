@@ -35,7 +35,7 @@ class BiRBTest(ABC):
             sim_type (str): Type of simulation to use. Options include:
                 - "aer": Use Qiskit's AerSimulator with a noise model.
                 - "fake": Use Qiskit's Fake Backends to simulate a real device.
-                - TODO: Add support for real quantum devices.
+                - "real": Use IBM's real devices.
 
             backend_name (str): Name of the IBM quantum backend (real or simulated) to run the tests on.
 
@@ -79,9 +79,20 @@ class BiRBTest(ABC):
             self.backend.refresh(service)
             self.sampler = SamplerV2(self.backend)
 
+        elif(self.sim_type == "real"):
+            try:
+                if(backend_name == "least_busy"):
+                    self.backend = service.least_busy(operational=True, simulator=False)
+                    print("Least busy backend: " + self.backend.name)
+                else:
+                    self.backend = service.backend(backend_name)
+                self.sampler = SamplerV2(self.backend)
+            except Exception:
+                print("Error: Backend " + backend_name + " not found.")
+                sys.exit(1)
 
         else:
-            print("Select a valid simulator: 'fake' or 'aer'")
+            print("Select a valid simulator: 'fake', 'aer' or 'real'")
             sys.exit(1)
 
 
@@ -371,7 +382,7 @@ class BiRBTest(ABC):
 
             counts_sim = pub_result.data.meas.get_counts()
 
-        elif (self.sim_type == 'noiseless'):
+        elif(self.sim_type == 'noiseless'):
 
             simulator = AerSimulator(
                 basis_gates=self.backend.configuration().basis_gates,
@@ -381,6 +392,11 @@ class BiRBTest(ABC):
             result = simulator.run(transpiled_circuit, 
                                    shots=self.shots_per_circuit).result()
             counts_sim = result.get_counts(0)
+
+        elif(self.sim_type == 'real'):
+            pub_result = self.sampler.run([transpiled_circuit], 
+                                          shots=self.shots_per_circuit).result()[0]
+            counts_sim = pub_result.data.meas.get_counts()
             
         else:
             circuit_noise = self.passmanager.run(circuit) 
