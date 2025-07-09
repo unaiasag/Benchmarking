@@ -347,14 +347,14 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
     for i in range(qubits):
         qubit_property_dict = {}
         qubit_property_dict["number"] = i
-        qubit_property_dict["T1"] = qubit_properties.qubit_property(i)["T1"][0]
-        qubit_property_dict["T2"] = qubit_properties.qubit_property(i)["T2"][0]
-        qubit_property_dict["frequency"] = qubit_properties.qubit_property(i)["frequency"][0]
-        qubit_property_dict["anharmonicity"] = qubit_properties.qubit_property(i)["anharmonicity"][0]
-        qubit_property_dict["readout_error"] = qubit_properties.qubit_property(i)["readout_error"][0]
-        qubit_property_dict["prob_meas0_prep1"] = qubit_properties.qubit_property(i)["prob_meas0_prep1"][0]
-        qubit_property_dict["prob_meas1_prep0"] = qubit_properties.qubit_property(i)["prob_meas1_prep0"][0]
-        qubit_property_dict["readout_length"] = qubit_properties.qubit_property(i)["readout_length"][0]
+        qubit_property_dict["T1"] = qubit_properties.qubit_property(i).get("T1", [None])[0]
+        qubit_property_dict["T2"] = qubit_properties.qubit_property(i).get("T2", [None])[0]
+        qubit_property_dict["frequency"] = qubit_properties.qubit_property(i).get("frequency", [None])[0]
+        qubit_property_dict["anharmonicity"] = qubit_properties.qubit_property(i).get("anharmonicity", [None])[0]
+        qubit_property_dict["readout_error"] = qubit_properties.qubit_property(i).get("readout_error", [None])[0]
+        qubit_property_dict["prob_meas0_prep1"] = qubit_properties.qubit_property(i).get("prob_meas0_prep1", [None])[0]
+        qubit_property_dict["prob_meas1_prep0"] = qubit_properties.qubit_property(i).get("prob_meas1_prep0", [None])[0]
+        qubit_property_dict["readout_length"] = qubit_properties.qubit_property(i).get("readout_length", [None])[0]
         qubit_properties_list.append(qubit_property_dict)
     target = t.backend.target
     

@@ -3,7 +3,7 @@ import sys
 import statistics
 from abc import ABC, abstractmethod
 
-from qiskit import QuantumCircuit, transpile
+from qiskit import QuantumCircuit, transpile, Session, Batch
 from qiskit.quantum_info import random_pauli, Statevector
 from qiskit.transpiler import generate_preset_pass_manager
 from qiskit_aer import AerSimulator 
@@ -451,6 +451,52 @@ class BiRBTest(ABC):
 
         return mean
 
+    def _runCircuitBatch(self, depth):
+
+        circuits, paulis = [], []
+        for _ in range(self.circuits_per_depth):
+
+            # Initial Pauli and stabilizer state
+            initial_pauli, estabilizer_circuit = self._prepareRandomPauli() 
+
+            # Random circuit
+            random_circuit = self._generateRandomCircuit(depth)
+
+            # Pauli for measurement
+            final_pauli = initial_pauli.evolve(random_circuit, frame='s') 
+
+            # Complete circuit
+            final_circuit = (
+                estabilizer_circuit
+                .compose(random_circuit)
+                .compose(self._pauliMeasurementCircuit(final_pauli)))
+
+            final_circuit.measure_all()
+
+            transpiled_circuit = transpile(final_circuit, self.backend, optimization_level=3)
+
+            paulis.append(final_pauli)
+            circuits.append(transpiled_circuit)
+        
+        results = self.sampler.run(circuits, shots=self.shots_per_circuit).result()
+        
+        evs = []
+        for i in range(self.circuits_per_depth):
+            counts_sim = results[i].data.meas.get_counts()
+
+            mean = 0 
+            total_num_shots = 0
+            for bitstring, count in counts_sim.items():
+                mean += self._getEigenvalue(bitstring, paulis[i]) * count
+                total_num_shots += count
+
+            # Check that the computer is making the correct number of shots
+            assert self.shots_per_circuit == total_num_shots, "Number of shots less than expected"
+            mean /= self.shots_per_circuit
+            evs.append(mean)
+
+        return evs
+
     def run(self, eps=1e-4):
 
         """
@@ -505,14 +551,21 @@ class BiRBTest(ABC):
                                                  result="")
 
 
-                depth_result = []
-
-                for _ in range(self.circuits_per_depth):
-                    result = self._runCircuit(depth)
-                    depth_result.append(result)
+                
+                
+                if(self.sim_type == "real"):
+                    depth_result = self._runCircuitBatch(depth)
                     progress.update(circuit_task,
-                                    advance=1,
-                                    result=f"[dim]Result:[/dim] {result:.4f}")
+                                        advance=self.circuits_per_depth,
+                                        result=f"[dim]Result:[/dim] -") # Esto da error
+                else:
+                    depth_result = []
+                    for _ in range(self.circuits_per_depth):
+                        result = self._runCircuit(depth)
+                        depth_result.append(result)
+                        progress.update(circuit_task,
+                                        advance=1,
+                                        result=f"[dim]Result:[/dim] {result:.4f}")
 
 
                 results_per_depth.append(depth_result)
