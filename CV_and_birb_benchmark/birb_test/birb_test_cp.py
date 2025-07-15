@@ -111,33 +111,30 @@ class BiRBTestCP(BiRBTest):
 
         # Depth and number of two qubit gates of the circuit that transform the
         # unitary to circuit, get a percent, and then transplie
-        metrics_transpile_slice = [0.0, 0.0]  
+        metrics_transpile_slice = {"Gate depth": 0.0, "Gate quantity": 0.0}
 
         # Depth and number of two qubit gates of the circuit that first get the
         # circuit of the unitary and then take teh percent
-        metrics_slice_transpile = [0.0, 0.0] 
-        metric_parameter = 0
+        metrics_slice_transpile = {"Gate depth": 0.0, "Gate quantity": 0.0} 
 
         if(type == "depth"):
-            metric_parameter = 0
             metric_name = "Gate depth"
         elif(type == "quantity"):
-            metric_parameter = 1
             metric_name = "Gate quantity"
         else:
             raise Exception (f"Parameter {type} not valid")
 
         # Get the depth and number of gates of the transpiled circuit
         (
-            metrics_transpile_slice[0],
-            metrics_transpile_slice[1]
+            metrics_transpile_slice["Gate depth"],
+            metrics_transpile_slice["Gate quantity"]
         ) = self._getDepthCircuit("transpile_slice", num_tries, self.percent)
 
         console = Console()
 
         # Binary search
-        while(abs(metrics_transpile_slice[metric_parameter] -
-            metrics_slice_transpile[metric_parameter]) >= tolerance):
+        while(abs(metrics_transpile_slice[metric_name] -
+            metrics_slice_transpile[metric_name]) >= tolerance):
 
             mid_percent = (low_percent + up_percent)/2
 
@@ -151,8 +148,8 @@ class BiRBTestCP(BiRBTest):
             # Get the depth and number of two qubit gates of the circuit
             # results of slicing and then transpiling
             (
-                metrics_slice_transpile[0],
-                metrics_slice_transpile[1] 
+                metrics_slice_transpile["Gate depth"],
+                metrics_slice_transpile["Gate quantity"] 
             ) = self._getDepthCircuit("slice_transpile", num_tries, mid_percent)
 
 
@@ -161,26 +158,32 @@ class BiRBTestCP(BiRBTest):
             table.add_column("Goal", justify="center")
             table.add_column("Obtained", justify="center")
 
-            table.add_row(metric_name,
-                          str(metrics_transpile_slice[metric_parameter]),
-                          str(metrics_slice_transpile[metric_parameter]))
+            table.add_row("▶ "+metric_name,
+                          str(metrics_transpile_slice[metric_name]),
+                          str(metrics_slice_transpile[metric_name]))
 
             table.add_row("Difference", str(self.tolerance),
-                          str(abs(metrics_transpile_slice[metric_parameter] -
-                          metrics_slice_transpile[metric_parameter])))
+                          str(abs(metrics_transpile_slice[metric_name] -
+                          metrics_slice_transpile[metric_name])))
+
+            if(metric_name == "Gate depth"): other_metric = "Gate quantity"
+            else: other_metric = "Gate depth"
+            table.add_row(other_metric,
+                          str(metrics_transpile_slice[other_metric]),
+                          str(metrics_slice_transpile[other_metric]))
 
             console.print(table)
 
             
-            if(metrics_slice_transpile[metric_parameter] <
-                   metrics_transpile_slice[metric_parameter]):
+            if(metrics_slice_transpile[metric_name] <
+                   metrics_transpile_slice[metric_name]):
 
                 low_percent = mid_percent
             else:
 
                 up_percent = mid_percent
 
-        return mid_percent, metrics_slice_transpile[0], metrics_slice_transpile[1]
+        return mid_percent, metrics_slice_transpile["Gate depth"], metrics_slice_transpile["Gate quantity"]
 
 
 
@@ -244,7 +247,7 @@ class BiRBTestCP(BiRBTest):
                     raise Exception(f"Method {method} not valid")
              
                 # Count the number of layers of two qubit gates
-                mean_depth += circuit.depth(lambda instr: len(instr.qubits) > 2)
+                mean_depth += circuit.depth(lambda instr: len(instr.qubits) > 1)
 
                 # Count the total number of two qubit gates
                 mean_gates += (lambda qc: 
