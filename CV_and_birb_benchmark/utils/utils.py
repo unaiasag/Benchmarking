@@ -232,8 +232,8 @@ def fitModel(results_per_depth, valid_depths, n, tolerance=0.5, initial_points=3
 
     return A_fit, p_fit, mean_infidelity, mean_per_depth
 
-def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
-                  circuits_per_depth, shots_per_circuit, percents, show=False):
+def runExperiment(user, sim_type, execution_mode, circuits_folder, output_folder, backend, qubits,
+                  depths, circuits_per_depth, shots_per_circuit, percents, show=False):
     """
         Run an experiment and save the results in a file 
 
@@ -243,7 +243,13 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
             sim_type (string): Simulation type. Accepted values are:
                 - "fake": fake backends
                 - "aer": Aer simulations
-                - "real" Real device TODO
+                - "real" Real device
+
+            execution_mode (string): Execution mode for the sampler. Accepted values
+                - "job": One job per depth
+                - "session": One job per depth and one session per percent
+            
+            circuits_folder (string): Path to the folder with the transpiled circuits
 
             output_folder (string): Path to the folder to store the data
 
@@ -291,7 +297,8 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
 
         t = BiRBTestCP(qubits, 
                        depths, 
-                       sim_type, 
+                       sim_type,
+                       execution_mode, 
                        backend, 
                        user, 
                        circuits_per_depth, 
@@ -302,7 +309,9 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
         quantity_2q_gates_per_percent.append(t.get2qQuantity())
         adapted_percent_per_percent.append(t.getAdaptedPercent())
 
-        results, valid_depths = t.run()
+        file_prefix = os.path.join(circuits_folder, f"{int(percent*100)}percent")
+
+        results, valid_depths = t.run(file_prefix=file_prefix)
 
         (
             A_fit,
@@ -382,6 +391,71 @@ def runExperiment(user, sim_type, output_folder, backend, qubits, depths,
                        qubits,
                        file_name_results,
                        show)
+    
+def prepareExperiment(user, sim_type, execution_mode, output_folder, backend, qubits, depths,
+                      circuits_per_depth, shots_per_circuit, percents, show=False):
+    """
+        Prepare an experiment and save the circuits in a file 
+
+        Args:
+            user (string): IBM user
+
+            sim_type (string): Simulation type. Accepted values are:
+                - "fake": fake backends
+                - "aer": Aer simulations
+                - "real" Real device
+            
+            execution_mode (string): Execution mode for the sampler. Accepted values
+                - "job": One job per depth
+                - "session": One job per depth and one session per percent
+
+            output_folder (string): Path to the folder to store the circuits
+
+            backend (string): Name of the IBM quantum backend (real or simulated) to run the tests on.
+
+            qubits (int): Number of qubits available on the target quantum processor.
+
+            depths (list[int]): List of circuit depths to be tested
+
+            circuits_per_depth (int): Number of random circuits to generate and test for each depth
+
+            shots_per_circuit (int): Number of shots we make for each circuit
+
+            percents (list[float]): List of the percents of the circuit
+
+            name (string): Name of the experiment
+
+            show (bool): If true, show the plot for each experiment
+    """
+    
+    for percent in percents:
+
+        file_prefix = os.path.join(output_folder, f"{int(percent*100)}percent")
+
+        console = Console()
+        panel = Panel(
+            Align.center(f"[bold yellow]Circuit percent: {percent*100}%[/bold yellow]"),
+            title="",
+            border_style="bright_yellow"
+        )
+
+        console.print(panel)
+
+        t = BiRBTestCP(qubits, 
+                       depths, 
+                       sim_type,
+                       execution_mode, 
+                       backend, 
+                       user, 
+                       circuits_per_depth, 
+                       shots_per_circuit, 
+                       percent)
+        
+        t.prepareCircuits(file_prefix=file_prefix)
+
+        print()
+
+    
 
 def plotCliffordVolume(results_per_percent, backend_name, qubits, file_name,
                        show=False):

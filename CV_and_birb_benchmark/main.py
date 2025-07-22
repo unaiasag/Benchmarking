@@ -4,12 +4,132 @@ import json
 from pathlib import Path
 from rich.console import Console
 from rich.table import Table
+from datetime import datetime
 
 from utils.utils import *
 
-def loadAndRunExperiments(file):
+def loadAndRunExperiments(file, circuits_folder=None):
     """
     Open a file with some experiments definition and execute each of the experiments  
+
+    Args:
+        file_name (str): Name of the file where the experiments definitions are
+
+        circuits_folder (str): Name of the folder containing the transpiled circuits
+                               for 'real' execution
+    """
+
+    try:
+        with open(file, "r") as f:
+            data = yaml.safe_load(f)
+
+    except Exception:
+        print(f"[ERROR] Could not read the file :{file}")
+
+
+    # Validate all the parameters of one experiment
+    def validateExperimentParams(params, name="(sin nombre)"):
+        if not isinstance(params.get("backend"), str):
+            raise ValueError(f"[{name}] 'backend' must be an string")
+        
+        if not isinstance(params.get("qubits"), int):
+            raise ValueError(f"[{name}] 'qubits' must be an integer")
+        
+        depths = params.get("depths")
+        if not (isinstance(depths, list) and all(isinstance(d, int) for d in depths)):
+            raise ValueError(f"[{name}] 'depths' must be a list of integers")
+        
+        if not isinstance(params.get("circuits_per_depth"), int):
+            raise ValueError(f"[{name}] 'circuits_per_depth' must be an integer")
+
+        if not isinstance(params.get("shots_per_circuit"), int):
+            raise ValueError(f"[{name}] 'shots_per_circuit' must be an integer")
+        
+        percents = params.get("percents")
+        if not (isinstance(percents, list) and all(isinstance(p, float) for p in percents)):
+            raise ValueError(f"[{name}] 'percents' must be a list of floats")
+
+
+    # General config 
+    config = data["config"]
+    user = config["user"]
+    simulation_type = config["simulation_type"]
+
+    if simulation_type == "real":
+        if not circuits_folder:
+            raise ValueError("[ERROR] For 'real' executions, you must specify --circuits")
+        circuits_path = Path(circuits_folder)
+        if not circuits_path.exists():
+            raise FileNotFoundError(f"[ERROR] Provided circuits folder '{circuits_folder}' does not exist.")
+    else:
+        circuits_path = None
+
+
+    execution_mode = config.get("execution_mode")
+    if execution_mode == None:
+        execution_mode = "job"
+        print(f"Default execution mode: 'job'")
+
+    output_folder = config["output_path"]
+    output_path = Path(output_folder)
+
+    if not output_path.exists() or not output_path.is_dir():
+        raise ValueError(f"{output_path} must be a valid folder path.")
+
+
+    # All the experiments
+    experiments = data["experiments"]
+
+    # Validate all experiments
+    for exp in experiments:
+        name = exp.get("name", "(no name)")
+        params = exp.get("params", {})
+        validateExperimentParams(params, name)
+
+    # Run the experiments
+    count = 1
+    for exp in experiments:
+        name = exp.get("name")
+        if not name:
+            name = f"unnamed_{count}"
+            count += 1
+        params = exp.get("params", {})
+
+
+        console = Console()
+
+        table = Table(title=f"🧪 Expermient {name} detalis", border_style="magenta")
+        table.add_column("Parameter", style="bold cyan")
+        table.add_column("Value", style="white")
+
+        table.add_row("Backend", params['backend'])
+        table.add_row("Qubits", str(params['qubits']))
+        table.add_row("Depths", str(params['depths']))
+        table.add_row("Circuits per depth", str(params['circuits_per_depth']))
+        table.add_row("Shots per circuit", str(params['shots_per_circuit']))
+        table.add_row("Percents", str(params['percents']))
+
+        console.print(table)
+
+        experiment_path = os.path.join(circuits_path, name)
+
+
+        runExperiment(user=user,
+                      sim_type=simulation_type,
+                      execution_mode=execution_mode,
+                      circuits_folder=experiment_path,
+                      output_folder=output_folder,
+                      backend=params['backend'],
+                      qubits=params['qubits'],
+                      depths=params['depths'],
+                      circuits_per_depth=params['circuits_per_depth'],
+                      shots_per_circuit=params['shots_per_circuit'],
+                      percents=params['percents'],
+                      show=False)
+
+def loadAndPrepareExperiments(file):
+    """
+    Open a file with some experiments definition and transpile the corresponding circuits  
 
     Args:
         file_name (str): Name of the file where the experiments definitions are
@@ -50,6 +170,12 @@ def loadAndRunExperiments(file):
     config = data["config"]
     user = config["user"]
     simulation_type = config["simulation_type"]
+
+    execution_mode = config.get("execution_mode")
+    if execution_mode == None:
+        execution_mode = "job"
+        print(f"Default execution mode: 'job'")
+
     output_folder = config["output_path"]
     output_path = Path(output_folder)
 
@@ -66,9 +192,17 @@ def loadAndRunExperiments(file):
         params = exp.get("params", {})
         validateExperimentParams(params, name)
 
-    # Run the experiments
+    filename = os.path.basename(file)
+    folder_name = os.path.splitext(filename)[0] + datetime.today().strftime('_%Y-%m-%d_%H-%M')
+    circuits_folder = os.path.join("transpiled_circuits", folder_name)
+
+    # Prepare the experiments
+    count = 1
     for exp in experiments:
-        name = exp.get("name", "(no name)")
+        name = exp.get("name")
+        if not name:
+            name = f"unnamed_{count}"
+            count += 1
         params = exp.get("params", {})
 
 
@@ -87,17 +221,20 @@ def loadAndRunExperiments(file):
 
         console.print(table)
 
+        experiment_path = os.path.join(circuits_folder, name)
+        os.makedirs(experiment_path, exist_ok=True)
 
-        runExperiment(user=user,
-                      sim_type=simulation_type,
-                      output_folder=output_folder,
-                      backend=params['backend'],
-                      qubits=params['qubits'],
-                      depths=params['depths'],
-                      circuits_per_depth=params['circuits_per_depth'],
-                      shots_per_circuit=params['shots_per_circuit'],
-                      percents=params['percents'],
-                      show=False)
+        prepareExperiment(user=user,
+                          sim_type=simulation_type,
+                          execution_mode=execution_mode,
+                          output_folder=experiment_path,
+                          backend=params['backend'],
+                          qubits=params['qubits'],
+                          depths=params['depths'],
+                          circuits_per_depth=params['circuits_per_depth'],
+                          shots_per_circuit=params['shots_per_circuit'],
+                          percents=params['percents'],
+                          show=False)
 
 
 
@@ -169,20 +306,33 @@ def main():
     run_parser.add_argument("filepath", 
                             type=str, 
                             help="Path to the experiment definition file (.yaml)")
+    run_parser.add_argument("--circuits",
+                            type=str,
+                            default=None,
+                            help="Path to the transpiled circuits folder (required for 'real' executions)")
 
 
     show_parser = subparsers.add_parser("show", help="Show the data from a file")
     show_parser.add_argument("filepath", 
                              type=str, 
                              help="Path to the result of an experiment (.json)")
+    
+
+    transpile_parser = subparsers.add_parser("transpile", help="Transpile circuits of an experiment")
+    transpile_parser.add_argument("filepath", 
+                                  type=str, 
+                                  help="Path to the experiment definition file (.yaml)")
 
     args = parser.parse_args()
 
     if args.command == "run":
-        loadAndRunExperiments(args.filepath)
+        loadAndRunExperiments(args.filepath, args.circuits)
 
     elif args.command == "show":
         readAndPlotExperiment(args.filepath)
+    
+    elif args.command == "transpile":
+        loadAndPrepareExperiments(args.filepath)
 
 
 if __name__ == '__main__':
