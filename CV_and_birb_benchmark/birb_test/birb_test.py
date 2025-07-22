@@ -1,3 +1,6 @@
+import os
+import pickle
+from collections import Counter
 import random
 import sys
 import statistics
@@ -9,7 +12,7 @@ from qiskit.transpiler import generate_preset_pass_manager
 from qiskit_aer import AerSimulator 
 from qiskit_ibm_runtime import QiskitRuntimeService
 from qiskit_aer.noise import NoiseModel
-from qiskit_ibm_runtime import SamplerV2
+from qiskit_ibm_runtime import SamplerV2, Session
 from qiskit_ibm_runtime.fake_provider import FakeProviderForBackendV2 
 
 from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
@@ -23,7 +26,7 @@ class BiRBTest(ABC):
     circuits on an IBM processor, either real or simulated.
     """
 
-    def __init__(self, qubits, depths, sim_type, backend_name, account_name, circuits_per_depth = int(1e5), shots_per_circuit = int(1e5)):
+    def __init__(self, qubits, depths, sim_type, execution_mode, backend_name, account_name, circuits_per_depth = int(1e5), shots_per_circuit = int(1e5)):
         """
         Constructor for the benchmark test class.
 
@@ -35,7 +38,7 @@ class BiRBTest(ABC):
             sim_type (str): Type of simulation to use. Options include:
                 - "aer": Use Qiskit's AerSimulator with a noise model.
                 - "fake": Use Qiskit's Fake Backends to simulate a real device.
-                - TODO: Add support for real quantum devices.
+                - "real": Use IBM's real devices.
 
             backend_name (str): Name of the IBM quantum backend (real or simulated) to run the tests on.
 
@@ -52,6 +55,7 @@ class BiRBTest(ABC):
         self.shots_per_circuit = shots_per_circuit
         self.backend_name = backend_name
         self.sim_type = sim_type
+        self.execution_mode = execution_mode
         
         service = QiskitRuntimeService(name=account_name)
 
@@ -79,9 +83,16 @@ class BiRBTest(ABC):
             self.backend.refresh(service)
             self.sampler = SamplerV2(self.backend)
 
+        elif(self.sim_type == "real"):
+            try:
+                self.backend = service.backend(backend_name)
+                self.sampler = SamplerV2(self.backend)
+            except Exception:
+                print("Error: Backend " + backend_name + " not found.")
+                sys.exit(1)
 
         else:
-            print("Select a valid simulator: 'fake' or 'aer'")
+            print("Select a valid simulator: 'fake', 'aer' or 'real'")
             sys.exit(1)
 
 
@@ -371,7 +382,7 @@ class BiRBTest(ABC):
 
             counts_sim = pub_result.data.meas.get_counts()
 
-        elif (self.sim_type == 'noiseless'):
+        elif(self.sim_type == 'noiseless'):
 
             simulator = AerSimulator(
                 basis_gates=self.backend.configuration().basis_gates,
@@ -435,7 +446,160 @@ class BiRBTest(ABC):
 
         return mean
 
-    def run(self, eps=1e-4):
+    def _generateCircuit(self, depth):
+        """
+        Creates a quantum circuit with the specified depth.
+
+        Args:
+            depth (int): Number of layers of the circuit.
+
+        Returns:
+            final_circuit (QuantumCircuit): Circuit including preparation, random layers,
+                                            and measurement.
+
+            final_pauli (Pauli): The Pauli operator used for final measurement.
+        """
+
+        # Initial Pauli and stabilizer state
+        initial_pauli, estabilizer_circuit = self._prepareRandomPauli() 
+
+        # Random circuit
+        random_circuit = self._generateRandomCircuit(depth)
+
+        # Pauli for measurement
+        final_pauli = initial_pauli.evolve(random_circuit, frame='s') 
+
+        # Complete circuit
+        final_circuit = (
+            estabilizer_circuit
+            .compose(random_circuit)
+            .compose(self._pauliMeasurementCircuit(final_pauli)))
+
+        final_circuit.measure_all()
+
+        return final_circuit, final_pauli
+    
+    def _selectTranspileLayout(self):
+        """
+        Selects the most repeated layout in the transpilation of various 
+        circuits (len(depths) x 10).
+
+        Returns:
+            list[int]: A layout (mapping of logical to physical qubits) that appears
+                       most frequently after transpiling test circuits.
+        """
+
+        # Generate and transpile the circuits 
+        circuits = []
+        for depth in self.depths:
+            for _ in range(10):
+                circuit, _ = self._generateCircuit(depth)
+                circuits.append(circuit)
+        
+        transpiled_circuits = transpile(circuits, self.backend, optimization_level=3)
+
+        # Count layout repetitions
+        counter = Counter()
+        for circuit in transpiled_circuits:
+            layout = tuple(circuit.layout.final_index_layout())
+            layout_set = frozenset(layout)
+            counter[layout_set] += 1
+
+        # Return the most common layout
+        most_repeated_set, _ = counter.most_common(1)[0]
+        
+        return list(most_repeated_set)  
+
+
+    
+    def _processBatchResults(self, results, paulis):
+        """
+        Computes the average of the eigenvalues for all the PUBs in a job.
+
+        Args:
+            results (Result): Result object obtained from a job with the 
+                              result() method.
+            
+            paulis (list[Pauli]): List of pauli operators for the eigenvalue
+                                  calculation.
+
+
+        Returns:
+            evs (list[float]): An average eigenvalue per circuit, computed 
+                               from counts and Pauli measurement.
+        """
+
+        evs = []
+        for i in range(self.circuits_per_depth):
+            counts_sim = results[i].data.meas.get_counts()
+
+            mean = 0 
+            total_num_shots = 0
+            for bitstring, count in counts_sim.items():
+                mean += self._getEigenvalue(bitstring, paulis[i]) * count
+                total_num_shots += count
+
+            # Check that the computer is making the correct number of shots
+            assert self.shots_per_circuit == total_num_shots, "Number of shots less than expected"
+            mean /= self.shots_per_circuit
+            evs.append(mean)
+
+        return evs
+
+    def prepareCircuits(self, file_prefix):
+
+        """
+        Creates, transpiles and saves all the circuits and paulis for all depths.
+
+        Args:
+            file_prefix (str): File name prefix (e.g. '.../50percent'), to which 
+                               '_depth_X.pk' will be appended.
+        """
+
+        layout = self._selectTranspileLayout()
+        
+        console = Console()
+        console.print("")
+
+        panel = Panel(
+            Align.center("[bold]🚀 Preparing Clifford circuits for "
+                         "different depths[/bold]"),
+            title="PROCESSING",
+            border_style="green",
+        )
+        console.print(Align.center(panel))
+
+        with Progress(
+            TextColumn("[bold green]{task.fields[title]}"),
+            BarColumn(),
+            TextColumn("({task.completed}/{task.total})"),
+            TextColumn("{task.fields[result]}"),
+            TimeElapsedColumn(),
+            transient=False
+        ) as progress:
+            overall_task = progress.add_task("", 
+                                             total=len(self.depths),
+                                             title="Total depths", 
+                                             result="")
+            
+            for depth in self.depths:
+
+                circuits, paulis = [], []
+                for _ in range(self.circuits_per_depth):
+
+                    final_circuit, final_pauli = self._generateCircuit(depth)
+                    circuits.append(final_circuit)
+                    paulis.append(final_pauli)
+
+                transpiled_circuits = transpile(circuits, self.backend, optimization_level=3, initial_layout=layout)
+
+                with open(file_prefix + f"_depth_{depth}.pk", "wb") as f:
+                    pickle.dump((transpiled_circuits, paulis), f)
+
+                progress.update(overall_task, advance=1)
+
+
+    def run(self, eps=1e-4, file_prefix=None):
 
         """
         Runs the test using the provided data. If the results fall below the specified
@@ -444,6 +608,9 @@ class BiRBTest(ABC):
         Args:
             eps (float): Tolerance threshold. If the result of an execution is
                          less than this value, no additional depths are tested.
+            
+            percent_path (str): Folder containing the transpiled circuits 
+                                   for 'real' execution.
 
         Returns:
             results_per_depth (list[list[float]]): A list where each element
@@ -453,7 +620,6 @@ class BiRBTest(ABC):
             valid_depths (list[int]): A list of depths for which the test was
                                      actually executed.
         """
-
 
         results_per_depth = []
         valid_depths = []
@@ -481,33 +647,62 @@ class BiRBTest(ABC):
                                              total=len(self.depths),
                                              title="Total depths", 
                                              result="")
+            
+            if (self.sim_type == "real"):
 
-            for depth in self.depths:
-                circuit_task = progress.add_task(f"{depth}",
-                                                 total=self.circuits_per_depth,
-                                                 title=f"Circuits of depth {depth}",
-                                                 result="")
+                if (self.execution_mode == "session"):
+                    session = Session(self.backend)
+                    self.sampler = SamplerV2(mode=session)
 
+                for depth in self.depths:
+                    
+                    filepath = file_prefix + f"_depth_{depth}.pk"
+                    try:
+                        with open(filepath, "rb") as f:
+                            circuits, paulis = pickle.load(f)
+                    except Exception as e:
+                        if (self.execution_mode == "session"): session.close()
+                        print(f"Error loading file {filepath}: {e}")
+                        print("Session closed")
+                        sys.exit(1)
+                    
+                    results = self.sampler.run(circuits, shots=self.shots_per_circuit).result()
+                    depth_result = self._processBatchResults(results, paulis)
+                    results_per_depth.append(depth_result)
+                    valid_depths.append(depth)
+                    progress.update(overall_task, advance=1)
 
-                depth_result = []
+                    # If it is so low depth we not continue
+                    if(statistics.mean(depth_result) < eps):
+                        session.close()
+                        break
 
-                for _ in range(self.circuits_per_depth):
-                    result = self._runCircuit(depth)
-                    depth_result.append(result)
-                    progress.update(circuit_task,
-                                    advance=1,
-                                    result=f"[dim]Result:[/dim] {result:.4f}")
+                if (self.execution_mode == "session"): session.close()
+                                      
+            else:
+                for depth in self.depths:
+                    circuit_task = progress.add_task(f"{depth}",
+                                                    total=self.circuits_per_depth,
+                                                    title=f"Circuits of depth {depth}",
+                                                    result="")
 
+                    depth_result = []
+                    for _ in range(self.circuits_per_depth):
+                        result = self._runCircuit(depth)
+                        depth_result.append(result)
+                        progress.update(circuit_task,
+                                        advance=1,
+                                        result=f"[dim]Result:[/dim] {result:.4f}")
 
-                results_per_depth.append(depth_result)
-                valid_depths.append(depth)
+                    results_per_depth.append(depth_result)
+                    valid_depths.append(depth)
 
-                progress.update(overall_task, advance=1)
-                progress.remove_task(circuit_task)
+                    progress.update(overall_task, advance=1)
+                    progress.remove_task(circuit_task)
 
-                # If it is so low depth we not continue
-                if(statistics.mean(depth_result) < eps):
-                    break
+                    # If it is so low depth we not continue
+                    if(statistics.mean(depth_result) < eps):
+                        break
 
 
         return results_per_depth, valid_depths
