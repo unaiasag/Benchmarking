@@ -482,7 +482,7 @@ class BiRBTest(ABC):
     def _selectTranspileLayout(self):
         """
         Selects the most repeated layout in the transpilation of various 
-        circuits (len(depths) x 10).
+        circuits (len(depths) x 100).
 
         Returns:
             list[int]: A layout (mapping of logical to physical qubits) that appears
@@ -492,7 +492,7 @@ class BiRBTest(ABC):
         # Generate and transpile the circuits 
         circuits = []
         for depth in self.depths:
-            for _ in range(10):
+            for _ in range(100):
                 circuit, _ = self._generateCircuit(depth)
                 circuits.append(circuit)
         
@@ -530,7 +530,7 @@ class BiRBTest(ABC):
         """
 
         evs = []
-        for i in range(self.circuits_per_depth):
+        for i in range(len(results)):
             counts_sim = results[i].data.meas.get_counts()
 
             mean = 0 
@@ -609,8 +609,8 @@ class BiRBTest(ABC):
             eps (float): Tolerance threshold. If the result of an execution is
                          less than this value, no additional depths are tested.
             
-            percent_path (str): Folder containing the transpiled circuits 
-                                   for 'real' execution.
+            file_prefix (str): Folder containing the transpiled circuits 
+                               for 'real' execution.
 
         Returns:
             results_per_depth (list[list[float]]): A list where each element
@@ -674,7 +674,7 @@ class BiRBTest(ABC):
 
                     # If it is so low depth we not continue
                     if(statistics.mean(depth_result) < eps):
-                        session.close()
+                        if (self.execution_mode == "session"): session.close()
                         break
 
                 if (self.execution_mode == "session"): session.close()
