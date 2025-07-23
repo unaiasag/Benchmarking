@@ -599,7 +599,7 @@ class BiRBTest(ABC):
                 progress.update(overall_task, advance=1)
 
 
-    def run(self, eps=1e-4, file_prefix=None):
+    def run(self, eps=1e-4, file_prefix=""):
 
         """
         Runs the test using the provided data. If the results fall below the specified

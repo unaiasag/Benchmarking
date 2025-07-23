@@ -306,13 +306,13 @@ def runExperiment(user, sim_type, execution_mode, circuits_folder, output_folder
                        shots_per_circuit, 
                        percent)
 
-        depth_2q_gates_per_percent.append(t.get2qDepth())
-        quantity_2q_gates_per_percent.append(t.get2qQuantity())
-        adapted_percent_per_percent.append(t.getAdaptedPercent())
-
         file_prefix = os.path.join(circuits_folder, f"{int(percent*100)}percent")
 
         results, valid_depths = t.run(file_prefix=file_prefix)
+
+        depth_2q_gates_per_percent.append(t.get2qDepth())
+        quantity_2q_gates_per_percent.append(t.get2qQuantity())
+        adapted_percent_per_percent.append(t.getAdaptedPercent())
 
         (
             A_fit,
@@ -403,7 +403,7 @@ def runExperiment(user, sim_type, execution_mode, circuits_folder, output_folder
                        show)
     
 def prepareExperiment(user, sim_type, execution_mode, output_folder, backend, qubits, depths,
-                      circuits_per_depth, shots_per_circuit, percents, show=False):
+                      circuits_per_depth, shots_per_circuit, percents):
     """
         Prepare an experiment and save the circuits in a file 
 
@@ -435,7 +435,6 @@ def prepareExperiment(user, sim_type, execution_mode, output_folder, backend, qu
 
             name (string): Name of the experiment
 
-            show (bool): If true, show the plot for each experiment
     """
     
     for percent in percents:

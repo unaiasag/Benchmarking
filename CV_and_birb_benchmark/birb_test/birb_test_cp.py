@@ -1,6 +1,8 @@
 import random 
 from typing import override
 import numpy as np
+import json
+import sys
 
 from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import random_clifford
@@ -45,47 +47,22 @@ class BiRBTestCP(BiRBTest):
                          circuits_per_depth, shots_per_circuit)
 
         self.percent = percent
-
         self.tolerance = 0.1
 
-        if(percent == 1.0):
-            self.adapted_percent = 1.0
-            ( 
-                self.depth_2q_gate,
-                self.quantity_2q_gate
-            ) = self._getDepthCircuit("slice_transpile", 1000, self.percent)
-
-        else:
-            console = Console()
-            panel = Panel(
-                Align.center("Computing adapted percent for the circuit"),
-                title="PREPROCESSING",
-                border_style="green",
-            )
-            console.print(Align.center(panel))
-
-            (
-                self.adapted_percent, 
-                self.depth_2q_gate, 
-                self.quantity_2q_gate
-            ) = self._findPercent("quantity", 1000, self.tolerance)
-
-            panel = Panel.fit(
-                f"[bold yellow]ADAPTED PERCENT:[/] [bold magenta]{self.adapted_percent:.3f}[/]",
-                title="[bold green]✅ Result",
-                border_style="bright_blue",
-            )
-
-            console.print(panel)
-
+        self.adapted_percent = -1
+        self.depth_2q_gate = -1
+        self.quantity_2q_gate = -1
 
     def get2qDepth(self):
+        assert(self.depth_2q_gate >= 0)
         return self.depth_2q_gate
     
     def get2qQuantity(self):
+        assert(self.quantity_2q_gate >= 0)
         return self.quantity_2q_gate
 
     def getAdaptedPercent(self):
+        assert(self.adapted_percent >= 0)
         return self.adapted_percent
 
     def _findPercent(self, type, num_tries, tolerance):
@@ -307,3 +284,71 @@ class BiRBTestCP(BiRBTest):
             return clifford_circuit
 
         return self._getPercent(clifford_circuit, self.adapted_percent)
+
+    @override
+    def prepareCircuits(self, file_prefix):
+
+        """
+        Override the parent function to calculate first the adapted percent we
+        need for the circuits, and then call the parents functions to store the
+        circuits
+
+        """
+        if(self.percent == 1.0):
+            self.adapted_percent = 1.0
+            ( 
+                self.depth_2q_gate,
+                self.quantity_2q_gate
+            ) = self._getDepthCircuit("slice_transpile", 1000, self.percent)
+
+        else:
+            console = Console()
+            panel = Panel(
+                Align.center("Computing adapted percent for the circuit"),
+                title="PREPROCESSING",
+                border_style="green",
+            )
+            console.print(Align.center(panel))
+
+            (
+                self.adapted_percent, 
+                self.depth_2q_gate, 
+                self.quantity_2q_gate
+            ) = self._findPercent("quantity", 1000, self.tolerance)
+
+            panel = Panel.fit(
+                f"[bold yellow]ADAPTED PERCENT:[/] [bold magenta]{self.adapted_percent:.3f}[/]",
+                title="[bold green]✅ Result",
+                border_style="bright_blue",
+            )
+
+            console.print(panel)
+
+        datos = {
+            "adapted_percent": self.adapted_percent,
+            "depth_2q_gate": self.depth_2q_gate,
+            "quantity_2q_gate": self.quantity_2q_gate
+        }
+
+        with open(file_prefix + f"confing.json", "w", encoding="utf-8") as f:
+            json.dump(datos, f, indent=4, ensure_ascii=False)
+
+        super().prepareCircuits(file_prefix)
+
+    @override
+    def run(self, eps=1e-4, file_prefix=""):
+
+        config_path = file_prefix + f"config.json"
+
+        try:
+            with open("config.json", "r", encoding="utf-8") as f:
+                data = json.load(f)
+                self.adapted_percent = data["adapted_percent"]
+                self.depth_2q_gate = data["depth_2q_gate"]
+                self.quantity_2q_gate = data["quantity_2q_gate"]
+
+        except Exception as e:
+            print(f"Error loading file {config_path}: {e}")
+            sys.exit(1)
+        super().run(eps,file_prefix)
+
