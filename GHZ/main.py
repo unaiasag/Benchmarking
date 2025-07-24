@@ -42,11 +42,21 @@ def getBestGHZCircuitsPerQPU(backend, start_qubits=2, maximo=2):
 
     circuits = {}
 
+    GHZ_strategies = ["lineal_v2", "lineal", "log", "log_v2"]
+
     for i in range(start_qubits, maximo+1):
-        # TODO: Implementar la lógica para obtener el circuito óptimo
-        best_mode = "lineal_v2"  # Placeholder for the best mode, best mode for transpiled circuits measuring 2 qubit gates
-        circuits[i] = transpile_circuit(create_ghz_circuit(i, mode=best_mode), backend=backend)
-        
+        best_ghz_circuit = None
+        min_operations = float('inf')
+        best_strategy = None
+        for strategy in GHZ_strategies:
+            circuit =transpile_circuit(create_ghz_circuit(i, mode=strategy), backend=backend)
+            operations_2q = circuit.count_ops().get("cz", 0) + circuit.count_ops().get("ecr", 0)
+            if operations_2q < min_operations:
+                min_operations = operations_2q
+                best_ghz_circuit = circuit
+                best_strategy = strategy
+
+        circuits[i] = best_ghz_circuit
 
     return circuits
 
