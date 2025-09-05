@@ -1,0 +1,15 @@
+config:
+  user: "uxue-benchmarking-eu"
+  simulation_type: "real"
+  execution_mode: "job"
+  output_path: "experiments_results"
+
+experiments:
+  - name: ibm_aachen_1q
+    params:
+      backend: "ibm_aachen"
+      qubits: 1
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 10000
+      shots_per_circuit: 40
+      percents: [1.0]

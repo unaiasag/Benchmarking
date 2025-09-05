@@ -274,6 +274,7 @@ def runExperiment(user, sim_type, execution_mode, circuits_folder, output_folder
 
     infidelities_per_percent = []
 
+    layouts = []
 
     # Depth of two qubit gates for each percent
     depth_2q_gates_per_percent = []
@@ -305,13 +306,13 @@ def runExperiment(user, sim_type, execution_mode, circuits_folder, output_folder
                        shots_per_circuit, 
                        percent)
 
-        depth_2q_gates_per_percent.append(t.get2qDepth())
-        quantity_2q_gates_per_percent.append(t.get2qQuantity())
-        adapted_percent_per_percent.append(t.getAdaptedPercent())
-
         file_prefix = os.path.join(circuits_folder, f"{int(percent*100)}percent")
 
         results, valid_depths = t.run(file_prefix=file_prefix)
+
+        depth_2q_gates_per_percent.append(t.get2qDepth())
+        quantity_2q_gates_per_percent.append(t.get2qQuantity())
+        adapted_percent_per_percent.append(t.getAdaptedPercent())
 
         (
             A_fit,
@@ -328,9 +329,18 @@ def runExperiment(user, sim_type, execution_mode, circuits_folder, output_folder
                                     p_fit, 
                                     mean_infidelity, 
                                     mean_per_depth))
+        
+        for filename in os.listdir(circuits_folder):
+            if filename.startswith(f"{int(percent*100)}percent") and filename.endswith(".pk"):
+                filepath = os.path.join(circuits_folder, filename)
+                with open(filepath, "rb") as f:
+                    circuits, _ = pickle.load(f)
+                layouts.append(circuits[0].layout.final_index_layout())
+                break
 
         print()
-
+    
+    layout_qubits = sorted(list(set(elem for sublist in layouts for elem in sublist)))
 
     # Save the data of the experiment
     file_name_results = f"results_{backend}_{qubits}q_{start_date_str}.json"
@@ -353,7 +363,7 @@ def runExperiment(user, sim_type, execution_mode, circuits_folder, output_folder
     
     qubit_properties = t.backend.properties()
     qubit_properties_list = []
-    for i in range(qubits):
+    for i in layout_qubits:
         qubit_property_dict = {}
         qubit_property_dict["number"] = i
         qubit_property_dict["T1"] = qubit_properties.qubit_property(i).get("T1", [None])[0]
@@ -393,7 +403,7 @@ def runExperiment(user, sim_type, execution_mode, circuits_folder, output_folder
                        show)
     
 def prepareExperiment(user, sim_type, execution_mode, output_folder, backend, qubits, depths,
-                      circuits_per_depth, shots_per_circuit, percents, show=False):
+                      circuits_per_depth, shots_per_circuit, percents):
     """
         Prepare an experiment and save the circuits in a file 
 
@@ -425,7 +435,6 @@ def prepareExperiment(user, sim_type, execution_mode, output_folder, backend, qu
 
             name (string): Name of the experiment
 
-            show (bool): If true, show the plot for each experiment
     """
     
     for percent in percents:

@@ -233,8 +233,7 @@ def loadAndPrepareExperiments(file):
                           depths=params['depths'],
                           circuits_per_depth=params['circuits_per_depth'],
                           shots_per_circuit=params['shots_per_circuit'],
-                          percents=params['percents'],
-                          show=False)
+                          percents=params['percents'])
 
 
 

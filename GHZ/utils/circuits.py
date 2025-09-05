@@ -17,16 +17,30 @@ def create_lineal_ghz_circuit(num_qubits):
 def create_lineal_ghz_circuit_2(num_qubits):
     ghz_circuit = QuantumCircuit(num_qubits)
 
-    # Apply a Hadamard gate to the middle qubit
-    ghz_circuit.h((num_qubits // 2)-1)
+    # Determine middle qubit
+    middle = num_qubits // 2
 
-    # Apply CNOT gates to create the GHZ state
-    for i in range(0, (num_qubits // 2)-1):
-        ghz_circuit.cx(num_qubits // 2 + i -1, num_qubits // 2 + i )
-        ghz_circuit.cx(num_qubits // 2 - i -1, num_qubits // 2 - i - 2)
+    # Apply Hadamard to the middle qubit
+    ghz_circuit.h(middle)
 
-    if num_qubits % 2 == 0:
-        ghz_circuit.cx(num_qubits-2, num_qubits-1)
+    # List of "currently entangled" qubits
+    entangled = [middle]
+
+    # Iteratively apply CNOTs to expand entanglement symmetrically
+    while True:
+        new_entangled = []
+        for q in entangled:
+            # Try to entangle q-1 (left)
+            if q - 1 >= 0 and (q - 1 not in entangled and q - 1 not in new_entangled):
+                ghz_circuit.cx(q, q - 1)
+                new_entangled.append(q - 1)
+            # Try to entangle q+1 (right)
+            if q + 1 < num_qubits and (q + 1 not in entangled and q + 1 not in new_entangled):
+                ghz_circuit.cx(q, q + 1)
+                new_entangled.append(q + 1)
+        if not new_entangled:
+            break  # No more qubits to entangle
+        entangled.extend(new_entangled)
 
     return ghz_circuit
 

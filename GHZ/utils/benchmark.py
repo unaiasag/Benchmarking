@@ -1,11 +1,8 @@
 import numpy as np
-import random
-import itertools
 
-from qiskit.quantum_info import SparsePauliOp
-from qiskit_ibm_runtime import Session, Estimator, EstimatorOptions
-
-from .circuits import create_ghz_circuit
+from qiskit import QuantumCircuit
+from qiskit.quantum_info import Clifford, Pauli
+from qiskit_ibm_runtime import Estimator, EstimatorOptions
 
 def compute_l(epsilon, delta):
     '''
@@ -13,113 +10,44 @@ def compute_l(epsilon, delta):
     '''
     return int(np.ceil(8 * np.log(4 / delta) / epsilon**2))
 
-def pauli_product(p1, p2):
+def ghz_circuit(n):
     """
-    Multiply two Pauli operators (I, X, Y, Z) and return:
-    - the result (I, X, Y, Z)
-    - the phase (±1, ±i), but we ignore imaginary phase for DFE
+    Create a Clifford circuit that generates GHZ state from |0...0⟩.
     """
-    # Pauli multiplication table: result and sign
-    table = {
-        ('I', 'I'): ('I', 1), ('I', 'X'): ('X', 1), ('I', 'Y'): ('Y', 1), ('I', 'Z'): ('Z', 1),
-        ('X', 'I'): ('X', 1), ('X', 'X'): ('I', 1), ('X', 'Y'): ('Z', 1j), ('X', 'Z'): ('Y', -1j),
-        ('Y', 'I'): ('Y', 1), ('Y', 'X'): ('Z', -1j), ('Y', 'Y'): ('I', 1), ('Y', 'Z'): ('X', 1j),
-        ('Z', 'I'): ('Z', 1), ('Z', 'X'): ('Y', 1j), ('Z', 'Y'): ('X', -1j), ('Z', 'Z'): ('I', 1),
-    }
-    result, phase = table[(p1, p2)]
-    return result, phase
+    qc = QuantumCircuit(n)
+    qc.h(0)
+    for i in range(1, n):
+        qc.cx(0, i)
+    return qc
 
-def multiply_pauli_strings(s1, s2):
+def sample_ghz_stabilizer(n, num_samples=1):
     """
-    Multiply two full Pauli strings and return:
-    - the resulting string
-    - the overall sign (±1) ignoring imaginary components
-    """
-    result = []
-    phase = 1
-    for p1, p2 in zip(s1, s2):
-        r, ph = pauli_product(p1, p2)
-        result.append(r)
-        phase *= ph
-    sign = 1 if phase.real > 0 else -1  # Only track ±1
-    return ''.join(result), sign
-
-def ghz_stabilizer_generators(n):
-    """
-    Return the GHZ_n stabilizer generators.
-    - One global X generator: X⊗X⊗...⊗X
-    - n-1 Z pair generators: Z_i Z_{i+1}
-    """
-    generators = []
-
-    # X⊗X⊗...⊗X
-    generators.append('X' * n)
-
-    # Z_i Z_{i+1}
-    for i in range(n - 1):
-        g = ['I'] * n
-        g[i] = 'Z'
-        g[i + 1] = 'Z'
-        generators.append(''.join(g))
-
-    return generators
-
-def generate_ghz_stabilizer_group(n):
-    """
-    Return a dictionary {pauli_str: sign} for the GHZ stabilizer group.
-    """
-    generators = ghz_stabilizer_generators(n)
-    num_gens = len(generators)
-
-    group = {}
-    for binary in itertools.product([0, 1], repeat=num_gens):
-        current = 'I' * n
-        sign = 1
-        for i, b in enumerate(binary):
-            if b:
-                current, s = multiply_pauli_strings(current, generators[i])
-                sign *= s
-        group[current] = sign
-
-    return group
-
-def sample_ghz_stabilizer_group_with_signs(n, num_samples):
-    """
-    Generate `num_samples` random stabilizers (Pauli strings + signs)
-    from the GHZ_n stabilizer group.
-    Returns a dict {pauli_str: sign}.
-    """
-    generators = ghz_stabilizer_generators(n)
-    num_gens = len(generators)
+    Sample `num_samples` Pauli strings from the GHZ_n stabilizer group.
     
-    stabilizer_samples = {}
-    max_tries = num_samples * 10
+    Returns a list of (Pauli, sign) tuples.
+    """
+    # 1. Build the GHZ Clifford circuit
+    qc = ghz_circuit(n)
+    clifford = Clifford(qc)
 
-    while len(stabilizer_samples) < num_samples and max_tries > 0:
-        max_tries -= 1
-        # Random binary vector selecting generators
-        subset = [random.choice([0,1]) for _ in range(num_gens)]
+    samples = []
+    for _ in range(num_samples):
+        # 2. Sample a string from {I,Z}^{⊗n}, represented by binary bits
+        z_bits = np.random.randint(0, 2, size=n)
+        x_bits = np.zeros(n, dtype=int)
+        pauli_base = Pauli((z_bits, x_bits))
 
-        current = 'I' * n
-        sign = 1
-        for i, bit in enumerate(subset):
-            if bit:
-                current, s = multiply_pauli_strings(current, generators[i])
-                sign *= s
+        # 3. Conjugate by Clifford: G P G†
+        pauli_conj = pauli_base.evolve(clifford, frame="s")
 
-        stabilizer_samples[current] = sign
+        # 4. Convert to string and phase
+        pauli_str = pauli_conj.to_label()
+        phase = pauli_conj.phase  # 0 = +1, 1 = i, 2 = -1, 3 = -i
+        sign = [1, 1j, -1, -1j][phase]
 
-    return stabilizer_samples
+        samples.append((pauli_str.strip("-"), sign))
 
-def select_stabilizer_observables(n, num_observables):
-    stabilizers = sample_ghz_stabilizer_group_with_signs(n, num_observables)
-    observables = list(stabilizers.keys())
-    if len(stabilizers) < num_observables:
-        selected_obs = random.choices(observables, k=num_observables)
-        selected_signs = [stabilizers[obs] for obs in selected_obs]
-        return [SparsePauliOp.from_list([(p, 1.0)]) for p in selected_obs], np.array(selected_signs)
-    else:
-        return [SparsePauliOp.from_list([(p, 1.0)]) for p in observables], np.array(list(stabilizers.values()))
+    return samples
 
 def run_circuit(circuit, observables, shots, mode):
 
@@ -149,11 +77,13 @@ def run_GHZ_experiment(num_qubits, mode, transpiled_circuit, epsilon=0.01, delta
     l = compute_l(epsilon=epsilon, delta=delta)  # Example values for epsilon and delta
     m_i = 1
     # Select random observables
-    observables, signs = select_stabilizer_observables(num_qubits, l) 
+    samples = sample_ghz_stabilizer(num_qubits, l)
+    observables = [Pauli(p) for (p, _) in samples]
+    signs = np.array([sign for (_, sign) in samples])
     observable_isa = [observable.apply_layout(layout=transpiled_circuit.layout) for observable in observables]
 
     result = run_circuit(transpiled_circuit, observable_isa, shots=m_i, mode=mode)
     expected_vals = np.array([pub_result.data.evs for pub_result in result])
     fidelity_estimate = np.mean(expected_vals * signs)
     
-    return observable_isa, expected_vals, fidelity_estimate
+    return observables, expected_vals, fidelity_estimate
