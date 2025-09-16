@@ -8,7 +8,7 @@ from datetime import datetime
 
 from utils.utils import *
 
-def loadAndRunExperiments(file, circuits_folder=None):
+def loadAndRunExperiments(file):
     """
     Open a file with some experiments definition and execute each of the experiments  
 
@@ -76,6 +76,11 @@ def loadAndRunExperiments(file, circuits_folder=None):
     if not output_path.exists() or not output_path.is_dir():
         raise ValueError(f"{output_path} must be a valid folder path.")
 
+    circuits_folder = config["circuits_path"]
+    circuits_path = Path(circuits_folder)
+
+    if not circuits_path.exists() or not circuits_path.is_dir():
+        raise ValueError(f"{output_path} must be a valid folder path.")
 
     # All the experiments
     experiments = data["experiments"]
@@ -182,6 +187,11 @@ def loadAndPrepareExperiments(file):
     if not output_path.exists() or not output_path.is_dir():
         raise ValueError(f"{output_path} must be a valid folder path.")
 
+    circuits_folder = config["circuits_path"]
+    circuits_path = Path(circuits_folder)
+
+    if not circuits_path.exists() or not circuits_path.is_dir():
+        raise ValueError(f"{output_path} must be a valid folder path.")
 
     # All the experiments
     experiments = data["experiments"]
@@ -192,9 +202,9 @@ def loadAndPrepareExperiments(file):
         params = exp.get("params", {})
         validateExperimentParams(params, name)
 
-    filename = os.path.basename(file)
-    folder_name = os.path.splitext(filename)[0] + datetime.today().strftime('_%Y-%m-%d_%H-%M')
-    circuits_folder = os.path.join("transpiled_circuits", folder_name)
+    #filename = os.path.basename(file)
+    #folder_name = os.path.splitext(filename)[0] + datetime.today().strftime('_%Y-%m-%d_%H-%M')
+    #circuits_folder = os.path.join("transpiled_circuits", folder_name)
 
     # Prepare the experiments
     count = 1
@@ -305,11 +315,6 @@ def main():
     run_parser.add_argument("filepath", 
                             type=str, 
                             help="Path to the experiment definition file (.yaml)")
-    run_parser.add_argument("--circuits",
-                            type=str,
-                            default=None,
-                            help="Path to the transpiled circuits folder (required for 'real' executions)")
-
 
     show_parser = subparsers.add_parser("show", help="Show the data from a file")
     show_parser.add_argument("filepath", 
@@ -325,7 +330,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "run":
-        loadAndRunExperiments(args.filepath, args.circuits)
+        loadAndRunExperiments(args.filepath)
 
     elif args.command == "show":
         readAndPlotExperiment(args.filepath)
