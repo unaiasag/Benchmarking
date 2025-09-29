@@ -341,7 +341,8 @@ class BiRBTestCP(BiRBTest):
         config_path = file_prefix + f"config.json"
 
         try:
-            with open("config.json", "r", encoding="utf-8") as f:
+            #with open("config.json", "r", encoding="utf-8") as f:
+            with open(config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 self.adapted_percent = data["adapted_percent"]
                 self.depth_2q_gate = data["depth_2q_gate"]
