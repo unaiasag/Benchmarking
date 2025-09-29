@@ -330,7 +330,7 @@ class BiRBTestCP(BiRBTest):
             "quantity_2q_gate": self.quantity_2q_gate
         }
 
-        with open(file_prefix + f"confing.json", "w", encoding="utf-8") as f:
+        with open(file_prefix + f"config.json", "w", encoding="utf-8") as f:
             json.dump(datos, f, indent=4, ensure_ascii=False)
 
         super().prepareCircuits(file_prefix)
@@ -351,5 +351,5 @@ class BiRBTestCP(BiRBTest):
         except Exception as e:
             print(f"Error loading file {config_path}: {e}")
             sys.exit(1)
-        super().run(eps,file_prefix)
+        return super().run(eps,file_prefix)
 

@@ -247,24 +247,35 @@ def loadAndPrepareExperiments(file):
 
 
 
-def readAndPlotExperiment(file_name):
+def readAndPlotExperiment(file):
     """
     Read all the data of a experiment from a file and plot the results
 
     Args:
         file_name (str): Name of the file to import the experiment
     """
-    file = None
+    #file = None
+    #try:
+    #    file = open(file_name,'r')
+    #except Exception:
+    #    print(f"[ERROR] Could not read the file: {file_name}")
     try:
-        file = open(file_name,'r')
+        with open(file, "r") as f:
+            data = yaml.safe_load(f)
     except Exception:
-        print(f"[ERROR] Could not read the file: {file_name}")
+        print(f"[ERROR] Could not read the file :{file}")
 
-    data = json.load(file)
-    backend = data['backend_name']
-    qubits = data['qubits']
-    results_saved = data['results_saved']
+    print(data)
+    backend = data['experiments'][0]['params']['backend']#['backend_name']
+    qubits = data['experiments'][0]['params']['qubits']#data['qubits']
+    results_file_name = data['config']['output_path'] + '/' + 'results_fake_torino_1q_2025-09-29_16-03.json' 
+    try:
+        with open(results_file_name, "r") as f:
+            results_saved = json.load(f)
+    except Exception:
+        print(f"[ERROR] Could not read the file :{results_file_name}")
     results_per_percent = []
+    print(results_saved)
 
     # Find all the parameters for the results
     for percent_results in results_saved:
@@ -287,18 +298,18 @@ def readAndPlotExperiment(file_name):
     plotCliffordVolume(results_per_percent,
                        backend,
                        qubits,
-                       file_name,
+                       file,
                        show=True)
 
     plotMultipleBiRBTests(results_per_percent,
                           backend,
                           qubits,
-                          file_name,
+                          file,
                           show=True)
 
     plotEvolutionPercent(results_per_percent,
                          backend,
-                         file_name,
+                         file,
                          qubits,
                          show=True)
 
