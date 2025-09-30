@@ -247,7 +247,7 @@ def loadAndPrepareExperiments(file):
 
 
 
-def readAndPlotExperiment(file):
+def readAndPlotExperiment(file, datetime):
     """
     Read all the data of a experiment from a file and plot the results
 
@@ -259,23 +259,25 @@ def readAndPlotExperiment(file):
     #    file = open(file_name,'r')
     #except Exception:
     #    print(f"[ERROR] Could not read the file: {file_name}")
+
     try:
         with open(file, "r") as f:
             data = yaml.safe_load(f)
     except Exception:
         print(f"[ERROR] Could not read the file :{file}")
 
-    print(data)
     backend = data['experiments'][0]['params']['backend']#['backend_name']
     qubits = data['experiments'][0]['params']['qubits']#data['qubits']
-    results_file_name = data['config']['output_path'] + '/' + 'results_fake_torino_1q_2025-09-29_16-03.json' 
+    results_file_name = data['config']['output_path'] + '/' + 'results_' + backend + '_' + str(qubits) + 'q_' + datetime + '.json'
+
     try:
         with open(results_file_name, "r") as f:
-            results_saved = json.load(f)
+            results_object = json.load(f)
     except Exception:
         print(f"[ERROR] Could not read the file :{results_file_name}")
+
     results_per_percent = []
-    print(results_saved)
+    results_saved = results_object['results_saved']
 
     # Find all the parameters for the results
     for percent_results in results_saved:
@@ -331,6 +333,9 @@ def main():
     show_parser.add_argument("filepath", 
                              type=str, 
                              help="Path to the result of an experiment (.json)")
+    show_parser.add_argument("datetime", 
+                             type=str, 
+                             help="Date and time of the execution")
     
 
     transpile_parser = subparsers.add_parser("transpile", help="Transpile circuits of an experiment")
@@ -344,7 +349,7 @@ def main():
         loadAndRunExperiments(args.filepath)
 
     elif args.command == "show":
-        readAndPlotExperiment(args.filepath)
+        readAndPlotExperiment(args.filepath, args.datetime)
     
     elif args.command == "transpile":
         loadAndPrepareExperiments(args.filepath)
