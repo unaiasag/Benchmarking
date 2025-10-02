@@ -95,8 +95,6 @@ class BiRBTest(ABC):
             print("Select a valid simulator: 'fake', 'aer' or 'real'")
             sys.exit(1)
 
-
-
     def _getEigenVectorGates(self, gate, eigenvalue):
         """
         Given a single-qubit Pauli operator and one of its eigenvalues (+1 or -1), 
@@ -131,7 +129,6 @@ class BiRBTest(ABC):
             else: return Z[1]
         
         return 'I'
-
 
     def _randomStabilizerState(self, pauli):
         """
@@ -197,7 +194,6 @@ class BiRBTest(ABC):
                 if(g == 'X'): qc.x(i)
         return qc
 
-
     def _prepareRandomPauli(self):
         """
         Generates a random Pauli operator along with a circuit that prepares
@@ -223,7 +219,6 @@ class BiRBTest(ABC):
 
         # Generate the circuit to prepare the Pauli operator.
         return pauli, self._randomStabilizerState(pauli)
-
 
     def _getEigenvalue(self, bitstring, pauli):
         """
@@ -256,7 +251,6 @@ class BiRBTest(ABC):
 
         return final_value
 
-
     @abstractmethod
     def _generateRandomLayer(self):
         """
@@ -264,7 +258,6 @@ class BiRBTest(ABC):
         that must be implemented by each subclass.
         """
         pass
-
 
     def _generateRandomCircuit(self, depth):
         """
@@ -308,7 +301,6 @@ class BiRBTest(ABC):
                 qc.h(i)
 
         return qc
-
 
     def test(self):
         """
@@ -361,8 +353,6 @@ class BiRBTest(ABC):
 
         print("All right?", all_right)
                 
-
-
     def _runCircuitSimulation(self, circuit):
         """
         Given a quantum circuit, transpiles and executes it on the specified backend.
@@ -400,7 +390,6 @@ class BiRBTest(ABC):
             counts_sim = result_sim.get_counts(0)
 
         return counts_sim
-
 
     def _runCircuit(self, depth):
         """
@@ -510,8 +499,6 @@ class BiRBTest(ABC):
         
         return list(most_repeated_set)  
 
-
-    
     def _processBatchResults(self, results, paulis):
         """
         Computes the average of the eigenvalues for all the PUBs in a job.
@@ -598,7 +585,6 @@ class BiRBTest(ABC):
 
                 progress.update(overall_task, advance=1)
 
-
     def run(self, eps=1e-4, file_prefix=""):
 
         """
@@ -650,11 +636,11 @@ class BiRBTest(ABC):
             
             if (self.sim_type == "real"):
 
-                if (self.execution_mode == "session"):
-                    session = Session(self.backend)
-                    self.sampler = SamplerV2(mode=session)
-
                 for depth in self.depths:
+
+                    if (self.execution_mode == "session"):
+                        session = Session(self.backend)
+                        self.sampler = SamplerV2(mode=session)
                     
                     filepath = file_prefix + f"_depth_{depth}.pk"
                     try:
@@ -677,7 +663,7 @@ class BiRBTest(ABC):
                         if (self.execution_mode == "session"): session.close()
                         break
 
-                if (self.execution_mode == "session"): session.close()
+                    if (self.execution_mode == "session"): session.close()
                                       
             else:
                 for depth in self.depths:

@@ -162,8 +162,6 @@ class BiRBTestCP(BiRBTest):
 
         return mid_percent, metrics_slice_transpile["Gate depth"], metrics_slice_transpile["Gate quantity"]
 
-
-
     def _getDepthCircuit(self, method, num_tries, percent):
         """
             Compute the depth of two-qubit gates and the number of such gates within a specified

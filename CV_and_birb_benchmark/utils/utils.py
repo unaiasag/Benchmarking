@@ -97,8 +97,6 @@ def plotMultipleBiRBTests(results_per_percent,
     if show:
         plt.show()
 
-
-
 def plotEvolutionPercent(results_per_percent,
                          backend_name,
                          file_name, 
@@ -464,8 +462,6 @@ def prepareExperiment(user, sim_type, execution_mode, output_folder, backend, qu
 
         print()
 
-    
-
 def plotCliffordVolume(results_per_percent, backend_name, qubits, file_name,
                        show=False):
 
@@ -579,7 +575,6 @@ def plotCliffordVolume(results_per_percent, backend_name, qubits, file_name,
     if(show):
         plt.show()
 
-
 def saveData(results_per_percent, 
              backend_name, 
              qubits, 
@@ -632,7 +627,6 @@ def saveData(results_per_percent,
         json.dump(data, f, indent=4)
 
     print("Data saved in file: " + file_name)
-
 
 def saveCalibration(backend_name, 
                     qubits, 

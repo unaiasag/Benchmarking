@@ -245,8 +245,6 @@ def loadAndPrepareExperiments(file):
                           shots_per_circuit=params['shots_per_circuit'],
                           percents=params['percents'])
 
-
-
 def readAndPlotExperiment(file, datetime):
     """
     Read all the data of a experiment from a file and plot the results
@@ -314,7 +312,6 @@ def readAndPlotExperiment(file, datetime):
                          file,
                          qubits,
                          show=True)
-
 
 def main():
 
