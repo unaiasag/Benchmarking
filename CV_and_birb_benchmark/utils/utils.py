@@ -88,7 +88,6 @@ def plotMultipleBiRBTests(results_per_percent,
     plt.tight_layout()
 
     # Save figure
-    date_now = file_name[-21:-5]
     filename = f"Fit_curve_for_{backend_name}_with_{qubits}_qubits.png"
     filepath = os.path.join("images_results", filename)
 
@@ -139,7 +138,7 @@ def plotEvolutionPercent(results_per_percent,
 
     plt.legend(loc="upper left") 
     plt.tight_layout()
-    date_now = file_name[-21:-5]    # Construir el nombre del archivo
+    # Construir el nombre del archivo
     filename = f"Mean_infidelity_evolution_with_the_percent_of_the_clifford_{backend_name}_{qubits}q.png"
     filepath = os.path.join("images_results", filename)
 
@@ -566,8 +565,7 @@ def plotCliffordVolume(results_per_percent, backend_name, qubits, file_name,
     plt.tight_layout()
 
     # Save figure
-    date_now = file_name[-21:-5]
-    filename = f"Clifford_volume_{backend_name}_with_{qubits}_qubits_{date_now}.png"
+    filename = f"Clifford_volume_{backend_name}_with_{qubits}_qubits.png"
     filepath = os.path.join("images_results", filename)
 
     plt.savefig(filepath)

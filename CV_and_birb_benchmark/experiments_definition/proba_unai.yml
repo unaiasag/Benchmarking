@@ -1,16 +1,17 @@
 
 config:
   user: "unai"
-  simulation_type: "fake"
+  simulation_type: "real"
+  execution_mode: "session"
   output_path: "experiments_results"
   circuits_path: "circuits"
 
 experiments:
-  - name: ibm_fake_torino_1q
+  - name: ibm_strasbourg_1q
     params:
-      backend: "fake_torino"
+      backend: "ibm_strasbourg"
       qubits: 1
-      depths: [10, 20, 50, 100, 200]
-      circuits_per_depth: 10
-      shots_per_circuit: 1000
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
+      circuits_per_depth: 100
+      shots_per_circuit: 10000
       percents: [1.0]

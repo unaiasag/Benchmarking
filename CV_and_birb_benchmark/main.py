@@ -55,14 +55,14 @@ def loadAndRunExperiments(file):
     user = config["user"]
     simulation_type = config["simulation_type"]
 
-    if simulation_type == "real":
-        if not circuits_folder:
-            raise ValueError("[ERROR] For 'real' executions, you must specify --circuits")
-        circuits_path = Path(circuits_folder)
-        if not circuits_path.exists():
-            raise FileNotFoundError(f"[ERROR] Provided circuits folder '{circuits_folder}' does not exist.")
-    else:
-        circuits_path = None
+    #if simulation_type == "real":
+    #    if not circuits_folder:
+    #        raise ValueError("[ERROR] For 'real' executions, you must specify --circuits")
+    #    circuits_path = Path(circuits_folder)
+    #    if not circuits_path.exists():
+    #        raise FileNotFoundError(f"[ERROR] Provided circuits folder '{circuits_folder}' does not exist.")
+    #else:
+    #    circuits_path = None
 
 
     execution_mode = config.get("execution_mode")

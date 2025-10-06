@@ -657,6 +657,7 @@ class BiRBTest(ABC):
                     results_per_depth.append(depth_result)
                     valid_depths.append(depth)
                     progress.update(overall_task, advance=1)
+                    print(depth_result)
 
                     # If it is so low depth we not continue
                     if(statistics.mean(depth_result) < eps):
