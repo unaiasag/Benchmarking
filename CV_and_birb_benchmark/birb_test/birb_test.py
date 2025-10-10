@@ -20,6 +20,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.align import Align
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 class BiRBTest(ABC):
     """
     Abstract class that encapsulates the BiRB benchmark for different types of
@@ -533,7 +535,7 @@ class BiRBTest(ABC):
 
         return evs
 
-    def prepareCircuits(self, file_prefix):
+    def prepareCircuits_old(self, file_prefix):
 
         """
         Creates, transpiles and saves all the circuits and paulis for all depths.
@@ -584,6 +586,92 @@ class BiRBTest(ABC):
                     pickle.dump((transpiled_circuits, paulis), f)
 
                 progress.update(overall_task, advance=1)
+
+    def prepareCircuits(self, file_prefix):
+        """
+        Creates, transpiles and saves all the circuits and paulis for all depths.
+        Parallelized over depths using threads to avoid pickling issues.
+        """
+        layout = self._selectTranspileLayout()
+
+        console = Console()
+        console.print("")
+
+        panel = Panel(
+            Align.center("[bold]🚀 Preparing Clifford circuits for different depths[/bold]"),
+            title="PROCESSING",
+            border_style="green",
+        )
+        console.print(Align.center(panel))
+
+        # Función que construye, transpila y guarda un depth completo
+        def _build_transpile_dump_for_depth(depth, task_id):
+            circuits, paulis = [], []
+            # Generación de circuitos y paulis
+            for _ in range(self.circuits_per_depth):
+                final_circuit, final_pauli = self._generateCircuit(depth)
+                circuits.append(final_circuit)
+                paulis.append(final_pauli)
+                # Actualizamos la barra de ese depth
+                progress.update(task_id, advance=1)
+
+            # Transpilación (usa el layout seleccionado)
+            transpiled_circuits = transpile(
+                circuits,
+                self.backend,
+                optimization_level=3,
+                initial_layout=layout
+            )
+
+            # Guardado en disco
+            outfile = file_prefix + f"_depth_{depth}.pk"
+            with open(outfile, "wb") as f:
+                pickle.dump((transpiled_circuits, paulis), f)
+
+            return depth, outfile
+
+        with Progress(
+            TextColumn("[bold green]{task.fields[title]}"),
+            BarColumn(),
+            TextColumn("({task.completed}/{task.total})"),
+            TextColumn("{task.fields[result]}"),
+            TimeElapsedColumn(),
+            transient=False
+        ) as progress:
+
+            overall_task = progress.add_task(
+                "",
+                total=len(self.depths),
+                title="Total depths",
+                result=""
+            )
+
+            # Creamos una barra por depth
+            per_depth_task = {
+                depth: progress.add_task(
+                    f"{depth}",
+                    total=self.circuits_per_depth,
+                    title=f"Circuits of depth {depth}",
+                    result=""
+                )
+                for depth in self.depths
+            }
+
+            # Paralelizamos por depth con hilos (seguro para self/backend)
+            max_workers = min(len(self.depths), (os.cpu_count() or 4))
+            futures = []
+            with ThreadPoolExecutor(max_workers=max_workers) as ex:
+                for depth in self.depths:
+                    futures.append(
+                        ex.submit(_build_transpile_dump_for_depth, depth, per_depth_task[depth])
+                    )
+
+                # Recogemos resultados a medida que acaban
+                for fut in as_completed(futures):
+                    depth, outfile = fut.result()
+                    # Cerramos la barra de ese depth y actualizamos el total
+                    progress.update(overall_task, advance=1, result=f"[dim]Saved:[/dim] {os.path.basename(outfile)}")
+                    progress.remove_task(per_depth_task[depth])
 
     def run(self, eps=1e-4, file_prefix=""):
 

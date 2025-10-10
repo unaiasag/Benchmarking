@@ -457,7 +457,8 @@ def prepareExperiment(user, sim_type, execution_mode, output_folder, backend, qu
                        shots_per_circuit, 
                        percent)
         
-        t.prepareCircuits(file_prefix=file_prefix)
+        #t.prepareCircuits(file_prefix=file_prefix)
+        t.prepareCircuits_old(file_prefix=file_prefix)
 
         print()
 
