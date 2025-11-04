@@ -11,7 +11,7 @@ experiments:
     params:
       backend: "ibm_fez"
       qubits: 1
-      depths: [100, 150, 220]
+      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
       circuits_per_depth: 1000
       shots_per_circuit: 1000
       percents: [1.0]
