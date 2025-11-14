@@ -8,7 +8,23 @@ from abc import ABC, abstractmethod
 
 from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import random_pauli, Statevector
-from qiskit.transpiler import generate_preset_pass_manager
+from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+from qiskit.transpiler import PassManager, CouplingMap, Layout, StagedPassManager
+from qiskit.transpiler.passes import (
+    #Optimize1qGatesDecomposition,
+    Optimize1qGates,
+    #CXCancellation,
+    CommutativeCancellation,
+    RemoveResetInZeroState,
+    RemoveFinalReset,
+    RemoveIdentityEquivalent,
+    OptimizeSwapBeforeMeasure,
+    RemoveFinalMeasurements,
+    BarrierBeforeFinalMeasurements,
+    RemoveBarriers,
+    # NOTE: we intentionally *do not* import RemoveDiagonalGatesBeforeMeasure
+)
+from qiskit.transpiler.passes import ApplyLayout
 from qiskit_aer import AerSimulator 
 from qiskit_ibm_runtime import QiskitRuntimeService
 from qiskit_aer.noise import NoiseModel
@@ -71,9 +87,21 @@ class BiRBTest(ABC):
             noise_real_model = NoiseModel.from_backend(backend)
 
             # Create noisy simulator backend
-            self.sim_noise = AerSimulator(noise_model=noise_real_model)
+            basis_gates = backend.configuration().basis_gates
+            cmap = backend.configuration().coupling_map
+
+            self.sim_noise = AerSimulator(
+                noise_model=noise_real_model,
+                basis_gates=basis_gates,
+                coupling_map=cmap,
+            )
             self.passmanager = generate_preset_pass_manager(optimization_level=3, 
                                                             backend=self.sim_noise)
+            self.passmanager.post_optimization = PassManager([
+                                        OptimizeSwapBeforeMeasure(),
+                                        RemoveBarriers(),                 # harmless clean-up
+                                        BarrierBeforeFinalMeasurements(), # preserves measurement structure
+                                        ])
 
         elif(self.sim_type == "fake" or self.sim_type == "noiseless"):
             try:
@@ -84,6 +112,20 @@ class BiRBTest(ABC):
 
             self.backend.refresh(service)
             self.sampler = SamplerV2(self.backend)
+            #basis_gates = self.backend.configuration().basis_gates
+            #cmap = self.backend.configuration().coupling_map
+            #target = self.backend.target
+            self.passmanager = generate_preset_pass_manager(optimization_level=3, 
+                                                            backend=self.backend,
+                                                            #target=target
+                                                            #basis_gates=basis_gates,
+                                                            #coupling_map=cmap
+                                                            )   
+            self.passmanager.post_optimization = PassManager([
+                                                OptimizeSwapBeforeMeasure(),
+                                                RemoveBarriers(),                 # harmless clean-up
+                                                BarrierBeforeFinalMeasurements(), # preserves measurement structure
+                                                ])
 
         elif(self.sim_type == "real"):
             try:
@@ -367,7 +409,15 @@ class BiRBTest(ABC):
             the number of times that bitstring was observed.
         """
 
-        transpiled_circuit = transpile(circuit, self.backend, optimization_level=3)
+        target = self.backend.target
+        pm3 = generate_preset_pass_manager(optimization_level=3, backend=self.backend, target=target)
+        pm3.post_optimization = PassManager([
+                                OptimizeSwapBeforeMeasure(),
+                                RemoveBarriers(),                 # harmless clean-up
+                                BarrierBeforeFinalMeasurements(), # preserves measurement structure
+                                ])
+        transpiled_circuit = pm3.run(circuit)
+
         if(self.sim_type == 'fake'):
             pub_result = self.sampler.run([transpiled_circuit],
                                           shots=self.shots_per_circuit).result()[0]
@@ -487,7 +537,13 @@ class BiRBTest(ABC):
                 circuit, _ = self._generateCircuit(depth)
                 circuits.append(circuit)
         
-        transpiled_circuits = transpile(circuits, self.backend, optimization_level=3)
+        pm3 = generate_preset_pass_manager(optimization_level=3, backend=self.backend)
+        pm3.post_optimization = PassManager([
+                                OptimizeSwapBeforeMeasure(),
+                                RemoveBarriers(),                 # harmless clean-up
+                                BarrierBeforeFinalMeasurements(), # preserves measurement structure
+                                ])
+        transpiled_circuits = pm3.run(circuits)
 
         # Count layout repetitions
         counter = Counter()
@@ -580,7 +636,14 @@ class BiRBTest(ABC):
                     circuits.append(final_circuit)
                     paulis.append(final_pauli)
 
-                transpiled_circuits = transpile(circuits, self.backend, optimization_level=3, initial_layout=layout)
+                target = self.backend.target
+                pm3 = generate_preset_pass_manager(optimization_level=3, backend=self.backend, initial_layout=layout, target=target)
+                pm3.post_optimization = PassManager([
+                                        OptimizeSwapBeforeMeasure(),
+                                        RemoveBarriers(),                 # harmless clean-up
+                                        BarrierBeforeFinalMeasurements(), # preserves measurement structure
+                                        ])
+                transpiled_circuits = pm3.run(circuits)
 
                 with open(file_prefix + f"_depth_{depth}.pk", "wb") as f:
                     pickle.dump((transpiled_circuits, paulis), f)
@@ -616,12 +679,13 @@ class BiRBTest(ABC):
                 progress.update(task_id, advance=1)
 
             # Transpilación (usa el layout seleccionado)
-            transpiled_circuits = transpile(
-                circuits,
-                self.backend,
-                optimization_level=3,
-                initial_layout=layout
-            )
+            pm3 = generate_preset_pass_manager(optimization_level=3, backend=self.backend, initial_layout=layout)
+            pm3.post_optimization = PassManager([
+                                    OptimizeSwapBeforeMeasure(),
+                                    RemoveBarriers(),                 # harmless clean-up
+                                    BarrierBeforeFinalMeasurements(), # preserves measurement structure
+                                    ])
+            transpiled_circuits = pm3.run(circuits)
 
             # Guardado en disco
             outfile = file_prefix + f"_depth_{depth}.pk"

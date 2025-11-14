@@ -8,7 +8,22 @@ import sys
 from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import random_clifford
 from qiskit.converters import circuit_to_dag
-
+from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+from qiskit.transpiler import PassManager, StagedPassManager
+from qiskit.transpiler.passes import (
+    #Optimize1qGatesDecomposition,
+    Optimize1qGates,
+    #CXCancellation,
+    CommutativeCancellation,
+    RemoveResetInZeroState,
+    RemoveFinalReset,
+    RemoveIdentityEquivalent,
+    OptimizeSwapBeforeMeasure,
+    RemoveFinalMeasurements,
+    BarrierBeforeFinalMeasurements,
+    RemoveBarriers,
+    # NOTE: we intentionally *do not* import RemoveDiagonalGatesBeforeMeasure
+)
 from rich.console import Console
 from rich.panel import Panel
 from rich.align import Align
@@ -208,16 +223,26 @@ class BiRBTestCP(BiRBTest):
 
                 if(method == "transpile_slice"):
                     qc = QuantumCircuit(self.qubits)
-                    qc.append(unitary, range(self.qubits)) 
-                    tranpiled_qc = transpile(qc, self.backend, optimization_level=3)
+                    qc.append(unitary, range(self.qubits))
+                    pm3 = generate_preset_pass_manager(optimization_level=3, backend=self.backend)
+                    pm3.post_optimization = PassManager([
+                                        OptimizeSwapBeforeMeasure(),
+                                        RemoveBarriers(),                 # harmless clean-up
+                                        BarrierBeforeFinalMeasurements(), # preserves measurement structure
+                                        ])
+                    tranpiled_qc = pm3.run(qc)
                     circuit = self._getPercent(tranpiled_qc, percent) 
 
                 elif method == "slice_transpile":
                     qc = unitary.to_circuit()
-                    reduced_qc = self._getPercent(qc, percent) 
-                    circuit = transpile(reduced_qc, 
-                                        backend=self.backend,
-                                        optimization_level=3)
+                    reduced_qc = self._getPercent(qc, percent)
+                    pm3 = generate_preset_pass_manager(optimization_level=3, backend=self.backend)
+                    pm3.post_optimization = PassManager([
+                                        OptimizeSwapBeforeMeasure(),
+                                        RemoveBarriers(),                 # harmless clean-up
+                                        BarrierBeforeFinalMeasurements(), # preserves measurement structure
+                                        ])
+                    circuit = pm3.run(reduced_qc)
 
                 else:
                     raise Exception(f"Method {method} not valid")
