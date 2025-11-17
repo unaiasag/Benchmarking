@@ -522,7 +522,7 @@ class BiRBTest(ABC):
 
         final_circuit.measure_all()
 
-        return final_circuit, final_pauli
+        return initial_pauli, estabilizer_circuit, final_circuit, final_pauli
     
     def _selectTranspileLayout(self):
         """
@@ -538,7 +538,7 @@ class BiRBTest(ABC):
         circuits = []
         for depth in self.depths:
             for _ in range(100):
-                circuit, _ = self._generateCircuit(depth)
+                _, _, circuit, _ = self._generateCircuit(depth)
                 circuits.append(circuit)
         
         pm3 = generate_preset_pass_manager(optimization_level=3, backend=self.backend)
@@ -633,12 +633,14 @@ class BiRBTest(ABC):
             
             for depth in self.depths:
 
-                circuits, paulis = [], []
+                initial_paulis, estabilizer_circuits, circuits, final_paulis = [], [], [], []
                 for _ in range(self.circuits_per_depth):
 
-                    final_circuit, final_pauli = self._generateCircuit(depth)
+                    initial_pauli, estabilizer_circuit, final_circuit, final_pauli = self._generateCircuit(depth)
+                    initial_paulis.append(initial_pauli)
+                    estabilizer_circuits.append(estabilizer_circuit)
                     circuits.append(final_circuit)
-                    paulis.append(final_pauli)
+                    final_paulis.append(final_pauli)
 
                 target = self.backend.target
                 pm3 = generate_preset_pass_manager(optimization_level=3, backend=self.backend, initial_layout=layout, target=target)
@@ -650,7 +652,7 @@ class BiRBTest(ABC):
                 transpiled_circuits = pm3.run(circuits)
 
                 with open(file_prefix + f"_depth_{depth}.pk", "wb") as f:
-                    pickle.dump((transpiled_circuits, paulis), f)
+                    pickle.dump((initial_paulis, estabilizer_circuits, transpiled_circuits, final_paulis), f)
 
                 progress.update(overall_task, advance=1)
 
