@@ -236,6 +236,9 @@ class BiRBTest(ABC):
                 if(g == 'S'): qc.s(i)
                 if(g == 'H'): qc.h(i)
                 if(g == 'X'): qc.x(i)
+
+        qc.barrier()
+
         return qc
 
     def _prepareRandomPauli(self):
@@ -315,6 +318,7 @@ class BiRBTest(ABC):
         for _ in range(0, depth):
             clifford_circuit = self._generateRandomLayer()
             qc = qc.compose(clifford_circuit) 
+            qc.barrier()
 
         return qc
 
