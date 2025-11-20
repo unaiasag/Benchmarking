@@ -302,12 +302,13 @@ class BiRBTestCP(BiRBTest):
             depth of a Clifford circuit on `self.n` qubits.
         """
 
-        clifford_circuit = random_clifford(self.qubits).to_circuit()
+        clifford = random_clifford(self.qubits)
+        clifford_circuit = clifford.to_circuit()
 
         if(self.percent == 1.0):
-            return clifford_circuit
+            return clifford, clifford_circuit
 
-        return self._getPercent(clifford_circuit, self.adapted_percent)
+        return clifford, self._getPercent(clifford_circuit, self.adapted_percent)
 
     @override
     def prepareCircuits(self, file_prefix):

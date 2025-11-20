@@ -315,14 +315,14 @@ class BiRBTest(ABC):
             QuantumCircuit: The constructed quantum circuit.
         """
         qc = QuantumCircuit(self.qubits) 
-        clifford_circuits = []
+        cliffords = []
         for _ in range(0, depth):
-            clifford_circuit = self._generateRandomLayer()
-            clifford_circuits.append(clifford_circuit)
+            clifford, clifford_circuit = self._generateRandomLayer()
+            cliffords.append(clifford)
             qc = qc.compose(clifford_circuit) 
             qc.barrier()
 
-        return clifford_circuits, qc
+        return cliffords, qc
 
     def _pauliMeasurementCircuit(self, pauli):
         """
@@ -511,7 +511,7 @@ class BiRBTest(ABC):
         initial_pauli, estabilizer_circuit = self._prepareRandomPauli() 
 
         # Random circuit
-        clifford_circuits, random_circuit = self._generateRandomCircuit(depth)
+        cliffords, random_circuit = self._generateRandomCircuit(depth)
 
         # Pauli for measurement
         final_pauli = initial_pauli.evolve(random_circuit, frame='s') 
@@ -524,7 +524,7 @@ class BiRBTest(ABC):
 
         final_circuit.measure_all()
 
-        return initial_pauli, estabilizer_circuit, clifford_circuits, final_circuit, final_pauli
+        return initial_pauli, estabilizer_circuit, cliffords, final_circuit, final_pauli
     
     def _selectTranspileLayout(self):
         """
@@ -635,12 +635,13 @@ class BiRBTest(ABC):
             
             for depth in self.depths:
 
-                initial_paulis, estabilizer_circuits, circuits, final_paulis = [], [], [], []
+                initial_paulis, estabilizer_circuits, cliffords_lists, circuits, final_paulis = [], [], [], []
                 for _ in range(self.circuits_per_depth):
 
-                    initial_pauli, estabilizer_circuit, clifford_circuits, final_circuit, final_pauli = self._generateCircuit(depth)
+                    initial_pauli, estabilizer_circuit, cliffords, final_circuit, final_pauli = self._generateCircuit(depth)
                     initial_paulis.append(initial_pauli)
                     estabilizer_circuits.append(estabilizer_circuit)
+                    cliffords_lists.append(cliffords)
                     circuits.append(final_circuit)
                     final_paulis.append(final_pauli)
 
@@ -654,7 +655,7 @@ class BiRBTest(ABC):
                 transpiled_circuits = pm3.run(circuits)
 
                 with open(file_prefix + f"_depth_{depth}.pk", "wb") as f:
-                    pickle.dump((initial_paulis, estabilizer_circuits, clifford_circuits, transpiled_circuits, final_paulis), f)
+                    pickle.dump((initial_paulis, estabilizer_circuits, cliffords_lists, transpiled_circuits, final_paulis), f)
 
                 progress.update(overall_task, advance=1)
 
