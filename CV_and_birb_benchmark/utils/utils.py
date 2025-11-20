@@ -331,7 +331,7 @@ def runExperiment(user, sim_type, execution_mode, circuits_folder, output_folder
             if filename.startswith(f"{int(percent*100)}percent") and filename.endswith(".pk"):
                 filepath = os.path.join(circuits_folder, filename)
                 with open(filepath, "rb") as f:
-                    circuits, _ = pickle.load(f)
+                    _, _, _, circuits, _ = pickle.load(f)
                 layouts.append(circuits[0].layout.final_index_layout())
                 break
 
