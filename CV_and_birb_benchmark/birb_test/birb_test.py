@@ -465,7 +465,7 @@ class BiRBTest(ABC):
         initial_pauli, estabilizer_circuit = self._prepareRandomPauli() 
 
         # Random circuit
-        random_circuit = self._generateRandomCircuit(depth)
+        _, random_circuit = self._generateRandomCircuit(depth)
 
         # Pauli for measurement
         final_pauli = initial_pauli.evolve(random_circuit, frame='s') 
@@ -540,7 +540,7 @@ class BiRBTest(ABC):
         circuits = []
         for depth in self.depths:
             for _ in range(100):
-                _, _, circuit, _ = self._generateCircuit(depth)
+                _, _, _, circuit, _ = self._generateCircuit(depth)
                 circuits.append(circuit)
         
         pm3 = generate_preset_pass_manager(optimization_level=3, backend=self.backend)
@@ -635,7 +635,7 @@ class BiRBTest(ABC):
             
             for depth in self.depths:
 
-                initial_paulis, estabilizer_circuits, cliffords_lists, circuits, final_paulis = [], [], [], []
+                initial_paulis, estabilizer_circuits, cliffords_lists, circuits, final_paulis = [], [], [], [], []
                 for _ in range(self.circuits_per_depth):
 
                     initial_pauli, estabilizer_circuit, cliffords, final_circuit, final_pauli = self._generateCircuit(depth)
