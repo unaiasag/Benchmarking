@@ -315,12 +315,14 @@ class BiRBTest(ABC):
             QuantumCircuit: The constructed quantum circuit.
         """
         qc = QuantumCircuit(self.qubits) 
+        clifford_circuits = []
         for _ in range(0, depth):
             clifford_circuit = self._generateRandomLayer()
+            clifford_circuits.append(clifford_circuit)
             qc = qc.compose(clifford_circuit) 
             qc.barrier()
 
-        return qc
+        return clifford_circuits, qc
 
     def _pauliMeasurementCircuit(self, pauli):
         """
@@ -509,7 +511,7 @@ class BiRBTest(ABC):
         initial_pauli, estabilizer_circuit = self._prepareRandomPauli() 
 
         # Random circuit
-        random_circuit = self._generateRandomCircuit(depth)
+        clifford_circuits, random_circuit = self._generateRandomCircuit(depth)
 
         # Pauli for measurement
         final_pauli = initial_pauli.evolve(random_circuit, frame='s') 
@@ -522,7 +524,7 @@ class BiRBTest(ABC):
 
         final_circuit.measure_all()
 
-        return initial_pauli, estabilizer_circuit, final_circuit, final_pauli
+        return initial_pauli, estabilizer_circuit, clifford_circuits, final_circuit, final_pauli
     
     def _selectTranspileLayout(self):
         """
@@ -636,7 +638,7 @@ class BiRBTest(ABC):
                 initial_paulis, estabilizer_circuits, circuits, final_paulis = [], [], [], []
                 for _ in range(self.circuits_per_depth):
 
-                    initial_pauli, estabilizer_circuit, final_circuit, final_pauli = self._generateCircuit(depth)
+                    initial_pauli, estabilizer_circuit, clifford_circuits, final_circuit, final_pauli = self._generateCircuit(depth)
                     initial_paulis.append(initial_pauli)
                     estabilizer_circuits.append(estabilizer_circuit)
                     circuits.append(final_circuit)
@@ -652,7 +654,7 @@ class BiRBTest(ABC):
                 transpiled_circuits = pm3.run(circuits)
 
                 with open(file_prefix + f"_depth_{depth}.pk", "wb") as f:
-                    pickle.dump((initial_paulis, estabilizer_circuits, transpiled_circuits, final_paulis), f)
+                    pickle.dump((initial_paulis, estabilizer_circuits, clifford_circuits, transpiled_circuits, final_paulis), f)
 
                 progress.update(overall_task, advance=1)
 
