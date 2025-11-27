@@ -564,38 +564,41 @@ class BiRBTest(ABC):
         return list(most_repeated_set)  
 
     def _processBatchResults(self, results, paulis):
-        """
-        Computes the average of the eigenvalues for all the PUBs in a job.
-
-        Args:
-            results (Result): Result object obtained from a job with the 
-                              result() method.
-            
-            paulis (list[Pauli]): List of pauli operators for the eigenvalue
-                                  calculation.
-
-
-        Returns:
-            evs (list[float]): An average eigenvalue per circuit, computed 
-                               from counts and Pauli measurement.
-        """
-
         evs = []
-        for i in range(len(results)):
-            counts_sim = results[i].data.meas.get_counts()
+        for i, pub_result in enumerate(results):
+            # Forma robusta: juntar todos los registros y sacar counts
+            try:
+                counts_sim = pub_result.join_data().get_counts()
+            except Exception:
+                # Fallback por si usas una versión antigua
+                data_bin = pub_result.data
+                if hasattr(data_bin, "meas"):
+                    counts_sim = data_bin.meas.get_counts()
+                else:
+                    # Buscar cualquier atributo que tenga get_counts()
+                    counts_sim = None
+                    for name in dir(data_bin):
+                        if name.startswith("_"):
+                            continue
+                        attr = getattr(data_bin, name)
+                        if hasattr(attr, "get_counts"):
+                            counts_sim = attr.get_counts()
+                            break
+                    if counts_sim is None:
+                        raise RuntimeError("No se ha encontrado ningún registro clásico con get_counts() en DataBin")
 
-            mean = 0 
+            mean = 0
             total_num_shots = 0
             for bitstring, count in counts_sim.items():
                 mean += self._getEigenvalue(bitstring, paulis[i]) * count
                 total_num_shots += count
 
-            # Check that the computer is making the correct number of shots
             assert self.shots_per_circuit == total_num_shots, "Number of shots less than expected"
             mean /= self.shots_per_circuit
             evs.append(mean)
 
         return evs
+
 
     def prepareCircuits_old(self, file_prefix):
 
@@ -806,13 +809,46 @@ class BiRBTest(ABC):
                     filepath = file_prefix + f"_depth_{depth}.pk"
                     try:
                         with open(filepath, "rb") as f:
-                            circuits, paulis = pickle.load(f)
+                            data = pickle.load(f)
+
+                        def is_circuit_list(obj):
+                            return isinstance(obj, list) and (len(obj) == 0 or isinstance(obj[0], QuantumCircuit))
+
+                        # Soportar los dos formatos:
+                        if isinstance(data, tuple) and len(data) == 2 and is_circuit_list(data[0]):
+                            # Formato viejo: (circuits, paulis)
+                            circuits, paulis = data
+
+                        elif isinstance(data, tuple) and len(data) == 5:
+                            # Formato nuevo: (initial_paulis, estabilizer_circuits, cliffords_lists, transpiled_circuits, final_paulis)
+                            initial_paulis, estabilizer_circuits, cliffords_lists, circuits, final_paulis = data
+                            paulis = final_paulis
+
+                        else:
+                            raise ValueError(f"Formato de pickle inesperado en {filepath}: {type(data)}, len={len(data)}")
+
+                        # Opcionalmente re-transpilar (aunque ya son transpiled_circuits)
+                        circuits = transpile(
+                            circuits,
+                            backend=self.backend,
+                            optimization_level=1,
+                        )
+
+
                     except Exception as e:
                         if (self.execution_mode == "session"): session.close()
                         print(f"Error loading file {filepath}: {e}")
                         print("Session closed")
                         sys.exit(1)
-                    
+                    import warnings
+
+                    # Silenciar solo este tipo de UserWarning de qiskit_ibm_runtime
+                    warnings.filterwarnings(
+                        "ignore",
+                        message=".*has no output classical registers so the result will be empty.*",
+                        category=UserWarning,
+                    )
+
                     results = self.sampler.run(circuits, shots=self.shots_per_circuit).result()
                     depth_result = self._processBatchResults(results, paulis)
                     results_per_depth.append(depth_result)
