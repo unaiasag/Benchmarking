@@ -303,7 +303,8 @@ def runExperiment(user, sim_type, execution_mode, circuits_folder, output_folder
                        shots_per_circuit, 
                        percent)
 
-        file_prefix = os.path.join(circuits_folder, f"{int(percent*100)}percent")
+        #file_prefix = os.path.join(circuits_folder, f"{int(percent*100)}percent")
+        file_prefix = circuits_folder
 
         results, valid_depths = t.run(file_prefix=file_prefix)
 
@@ -328,7 +329,7 @@ def runExperiment(user, sim_type, execution_mode, circuits_folder, output_folder
                                     mean_per_depth))
         
         for filename in os.listdir(circuits_folder):
-            if filename.startswith(f"{int(percent*100)}percent") and filename.endswith(".pk"):
+            if filename.startswith("depth") and filename.endswith(".pk"):
                 filepath = os.path.join(circuits_folder, filename)
                 with open(filepath, "rb") as f:
                     _, _, _, circuits, _ = pickle.load(f)
@@ -436,7 +437,8 @@ def prepareExperiment(user, sim_type, execution_mode, output_folder, backend, qu
     
     for percent in percents:
 
-        file_prefix = os.path.join(output_folder, f"{int(percent*100)}percent")
+        #file_prefix = os.path.join(output_folder, f"{int(percent*100)}percent")
+        file_prefix = output_folder
 
         console = Console()
         panel = Panel(
@@ -457,8 +459,10 @@ def prepareExperiment(user, sim_type, execution_mode, output_folder, backend, qu
                        shots_per_circuit, 
                        percent)
         
-        #t.prepareCircuits(file_prefix=file_prefix)
-        t.prepareCircuits_old(file_prefix=file_prefix)
+        t.prepareCircuits(file_prefix=file_prefix)
+        #t.prepareCircuits_depths_paralellized(file_prefix=file_prefix)
+        #t.prepareCircuits_circuits_paralellized(file_prefix=file_prefix)
+        #t.benchmark_generateCircuit(depth=5, n=20, max_workers=8)
 
         print()
 

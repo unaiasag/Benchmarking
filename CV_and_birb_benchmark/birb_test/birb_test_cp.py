@@ -350,70 +350,21 @@ class BiRBTestCP(BiRBTest):
             console.print(panel)
 
         datos = {
+            "percent": self.percent,
             "adapted_percent": self.adapted_percent,
             "depth_2q_gate": self.depth_2q_gate,
             "quantity_2q_gate": self.quantity_2q_gate
         }
 
-        with open(file_prefix + f"config.json", "w", encoding="utf-8") as f:
+        with open(file_prefix + f"/config.json", "w", encoding="utf-8") as f:
             json.dump(datos, f, indent=4, ensure_ascii=False)
 
         super().prepareCircuits(file_prefix)
 
     @override
-    def prepareCircuits_old(self, file_prefix):
-
-        """
-        Override the parent function to calculate first the adapted percent we
-        need for the circuits, and then call the parents functions to store the
-        circuits
-
-        """
-        if(self.percent == 1.0):
-            self.adapted_percent = 1.0
-            ( 
-                self.depth_2q_gate,
-                self.quantity_2q_gate
-            ) = self._getDepthCircuit("slice_transpile", 1000, self.percent)
-
-        else:
-            console = Console()
-            panel = Panel(
-                Align.center("Computing adapted percent for the circuit"),
-                title="PREPROCESSING",
-                border_style="green",
-            )
-            console.print(Align.center(panel))
-
-            (
-                self.adapted_percent, 
-                self.depth_2q_gate, 
-                self.quantity_2q_gate
-            ) = self._findPercent("quantity", 1000, self.tolerance)
-
-            panel = Panel.fit(
-                f"[bold yellow]ADAPTED PERCENT:[/] [bold magenta]{self.adapted_percent:.3f}[/]",
-                title="[bold green]✅ Result",
-                border_style="bright_blue",
-            )
-
-            console.print(panel)
-
-        datos = {
-            "adapted_percent": self.adapted_percent,
-            "depth_2q_gate": self.depth_2q_gate,
-            "quantity_2q_gate": self.quantity_2q_gate
-        }
-
-        with open(file_prefix + f"config.json", "w", encoding="utf-8") as f:
-            json.dump(datos, f, indent=4, ensure_ascii=False)
-
-        super().prepareCircuits_old(file_prefix)
-
-    @override
     def run(self, eps=1e-4, file_prefix=""):
 
-        config_path = file_prefix + f"config.json"
+        config_path = file_prefix + f"/config.json"
 
         try:
             #with open("config.json", "r", encoding="utf-8") as f:

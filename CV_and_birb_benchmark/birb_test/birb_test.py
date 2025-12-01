@@ -4,6 +4,7 @@ from collections import Counter
 import random
 import sys
 import statistics
+import time
 from abc import ABC, abstractmethod
 
 from qiskit import QuantumCircuit, transpile
@@ -36,7 +37,12 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.align import Align
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+
+def _worker_generate(args):
+
+        obj, depth = args
+        return obj._generateCircuit(depth)
 
 class BiRBTest(ABC):
     """
@@ -599,7 +605,7 @@ class BiRBTest(ABC):
 
         return evs
 
-    def prepareCircuits_old(self, file_prefix):
+    def prepareCircuits(self, file_prefix):
 
         """
         Creates, transpiles and saves all the circuits and paulis for all depths.
@@ -656,7 +662,7 @@ class BiRBTest(ABC):
                                         ])
                 transpiled_circuits = pm3.run(circuits)
 
-                with open(file_prefix + f"_depth_{depth}.pk", "wb") as f:
+                with open(file_prefix + f"/depth_{depth}.pk", "wb") as f:
                     pickle.dump((initial_paulis, estabilizer_circuits, cliffords_lists, transpiled_circuits, final_paulis), f)
 
                 progress.update(overall_task, advance=1)
@@ -707,7 +713,7 @@ class BiRBTest(ABC):
         # Optionally return something (e.g., depth or filename) for logging
         return depth, filename
 
-    def prepareCircuits(self, file_prefix, max_workers=None):
+    def prepareCircuits_depths_paralellized(self, file_prefix, max_workers=None):
         """
         Parallel version of prepareCircuits_old: one worker per depth.
         """
@@ -764,6 +770,145 @@ class BiRBTest(ABC):
                         )
                         # or re-raise if you want to stop everything:
                         # raise
+
+    def prepareCircuits_circuits_paralellized(self, file_prefix):
+
+        """
+        Creates, transpiles and saves all the circuits and paulis for all depths.
+        """
+
+        layout = self._selectTranspileLayout()
+            
+        console = Console()
+        console.print("")
+
+        panel = Panel(
+            Align.center("[bold]🚀 Preparing Clifford circuits for "
+                        "different depths[/bold]"),
+            title="PROCESSING",
+            border_style="green",
+        )
+        console.print(Align.center(panel))
+
+        with Progress(
+            TextColumn("[bold green]{task.fields[title]}"),
+            BarColumn(),
+            TextColumn("({task.completed}/{task.total})"),
+            TextColumn("{task.fields[result]}"),
+            TimeElapsedColumn(),
+            transient=False
+        ) as progress:
+            overall_task = progress.add_task("", 
+                                            total=len(self.depths),
+                                            title="Total depths", 
+                                            result="")
+            
+            target = self.backend.target
+            pm3 = generate_preset_pass_manager(
+                optimization_level=3,
+                backend=self.backend,
+                initial_layout=layout,
+                target=target
+            )
+            pm3.post_optimization = PassManager([
+                OptimizeSwapBeforeMeasure(),
+                RemoveBarriers(),
+                BarrierBeforeFinalMeasurements(),
+            ])
+
+            # Create thread pool once and reuse it for all depths
+            max_workers = getattr(self, "num_workers", None) or 8
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+
+                for depth in self.depths:
+
+                    # ---- PARALLELIZED PART ----
+                    # Execute self._generateCircuit(depth) in parallel
+                    futures = [
+                        executor.submit(self._generateCircuit, depth)
+                        for _ in range(self.circuits_per_depth)
+                    ]
+                    results = [f.result() for f in futures]
+                    # ---------------------------
+
+                    initial_paulis         = [r[0] for r in results]
+                    estabilizer_circuits   = [r[1] for r in results]
+                    cliffords_lists        = [r[2] for r in results]
+                    circuits               = [r[3] for r in results]
+                    final_paulis           = [r[4] for r in results]
+
+                    transpiled_circuits = pm3.run(circuits)
+
+                    with open(file_prefix + f"_depth_{depth}.pk", "wb") as f:
+                        pickle.dump(
+                            (initial_paulis,
+                            estabilizer_circuits,
+                            cliffords_lists,
+                            transpiled_circuits,
+                            final_paulis),
+                            f
+                        )
+
+                    progress.update(overall_task, advance=1)
+
+    def benchmark_generateCircuit(self, depth=5, n=20, max_workers=8):
+        """
+        Benchmark serial vs threads vs processes for self._generateCircuit(depth)
+        """
+
+        print(f"\nBenchmarking _generateCircuit(depth={depth}) for n={n} circuits\n")
+
+        # -----------------------
+        # Serial
+        # -----------------------
+        t0 = time.perf_counter()
+        for _ in range(n):
+            self._generateCircuit(depth)
+        t_serial = time.perf_counter() - t0
+        print(f"Serial time:             {t_serial:8.4f} s")
+
+        # -----------------------
+        # ThreadPoolExecutor
+        # -----------------------
+        t0 = time.perf_counter()
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            futures = [ex.submit(self._generateCircuit, depth) for _ in range(n)]
+            for f in futures:
+                f.result()
+        t_threads = time.perf_counter() - t0
+        print(f"Threaded time:           {t_threads:8.4f} s "
+            f"(speedup ×{t_serial / t_threads:.2f})")
+
+        # -----------------------
+        # ProcessPoolExecutor
+        # -----------------------
+        t0 = time.perf_counter()
+        try:
+            with ProcessPoolExecutor(max_workers=max_workers) as ex:
+                #futures = [ex.submit(_worker_generate, (self, depth)) for _ in range(n)]
+                futures = [ex.submit(self._generateCircuit, depth) for _ in range(n)]
+                for f in futures:
+                    f.result()
+            t_process = time.perf_counter() - t0
+            print(f"Process time:            {t_process:8.4f} s "
+                f"(speedup ×{t_serial / t_process:.2f})")
+        except Exception as e:
+            print("\nProcess version FAILED due to pickling:\n", str(e))
+            t_process = None
+
+        # -----------------------
+        # Recommendation
+        # -----------------------
+        print("\nRecommendation:")
+        if t_process is None:
+            print(" • Use THREADS (processes cannot serialize Qiskit objects).")
+        else:
+            if t_threads < t_process:
+                print(" • Use THREADS (faster and avoids serialization issues).")
+            else:
+                print(" • Use PROCESSES (faster for this workload).")
+
+        print("\nDone.\n")
 
     def run(self, eps=1e-4, file_prefix=""):
 
@@ -822,7 +967,7 @@ class BiRBTest(ABC):
                         session = Session(self.backend)
                         self.sampler = SamplerV2(mode=session)
                     
-                    filepath = file_prefix + f"_depth_{depth}.pk"
+                    filepath = file_prefix + f"/depth_{depth}.pk"
                     try:
                         with open(filepath, "rb") as f:
                             data = pickle.load(f)
@@ -844,11 +989,11 @@ class BiRBTest(ABC):
                             raise ValueError(f"Formato de pickle inesperado en {filepath}: {type(data)}, len={len(data)}")
 
                         # Opcionalmente re-transpilar (aunque ya son transpiled_circuits)
-                        circuits = transpile(
-                            circuits,
-                            backend=self.backend,
-                            optimization_level=1,
-                        )
+                        #circuits = transpile(
+                        #    circuits,
+                        #    backend=self.backend,
+                        #    optimization_level=1,
+                        #)
 
 
                     except Exception as e:
@@ -906,3 +1051,4 @@ class BiRBTest(ABC):
 
 
         return results_per_depth, valid_depths
+
