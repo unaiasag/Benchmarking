@@ -1,68 +1,17 @@
+
 config:
-  user: "david"
+  user: "unai"
   simulation_type: "fake"
+  execution_mode: "session"
   output_path: "experiments_results"
+  circuits_path: "circuits"
 
 experiments:
-  - name: ibm_fake_torino_3q
+  - name: ibm_fake_torino_1q
     params:
       backend: "fake_torino"
-      qubits: 3
-      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-      circuits_per_depth: 100
-      shots_per_circuit: 10000
-      percents: [0.5, 0.7, 1.0]
-
-  - name: ibm_fake_torino_4q
-    params:
-      backend: "fake_torino"
-      qubits: 4
-      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-      circuits_per_depth: 100
-      shots_per_circuit: 10000
-      percents: [0.5, 0.7, 1.0]
-
-  - name: ibm_fake_torino_5q
-    params:
-      backend: "fake_torino"
-      qubits: 5
-      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-      circuits_per_depth: 100
-      shots_per_circuit: 10000
-      percents: [0.5, 0.7, 1.0]
-
-  - name: ibm_fake_torino_6q
-    params:
-      backend: "fake_torino"
-      qubits: 6
-      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-      circuits_per_depth: 100
-      shots_per_circuit: 10000
-      percents: [0.5, 0.7, 1.0]
-
-  - name: ibm_fake_torino_7q
-    params:
-      backend: "fake_torino"
-      qubits: 7
-      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-      circuits_per_depth: 100
-      shots_per_circuit: 10000
-      percents: [0.5, 0.7, 1.0]
-
-  - name: ibm_fake_torino_8q
-    params:
-      backend: "fake_torino"
-      qubits: 8
-      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-      circuits_per_depth: 100
-      shots_per_circuit: 10000
-      percents: [0.5, 0.7, 1.0]
-
-  - name: ibm_fake_torino_9q
-    params:
-      backend: "fake_torino"
-      qubits: 9
-      depths: [1, 2, 4, 6, 17, 36, 65, 100, 150, 220]
-      circuits_per_depth: 100
-      shots_per_circuit: 10000
-      percents: [0.5, 0.7, 1.0]
+      qubits: 1
+      depths: [2, 17, 36, 150]
+      circuits_per_depth: 10
+      shots_per_circuit: 100
+      percents: [1.0]

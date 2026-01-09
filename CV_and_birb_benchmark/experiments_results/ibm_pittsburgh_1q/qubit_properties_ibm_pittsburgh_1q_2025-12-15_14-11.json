@@ -1,0 +1,17 @@
+{
+    "backend_name": "ibm_pittsburgh",
+    "qubits": 1,
+    "qubit_properties_list": [
+        {
+            "number": 81,
+            "T1": 0.0004275507767525899,
+            "T2": 0.0005669315248025039,
+            "frequency": null,
+            "anharmonicity": null,
+            "readout_error": 0.0030517578125,
+            "prob_meas0_prep1": 0.003173828125,
+            "prob_meas1_prep0": 0.0029296875,
+            "readout_length": 2.584e-06
+        }
+    ]
+}

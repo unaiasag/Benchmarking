@@ -1,0 +1,83 @@
+{
+    "backend_name": "ibm_pittsburgh",
+    "qubits": 7,
+    "qubit_properties_list": [
+        {
+            "number": 60,
+            "T1": 0.0003098998132388502,
+            "T2": 0.0004913052576711027,
+            "frequency": null,
+            "anharmonicity": null,
+            "readout_error": 0.00146484375,
+            "prob_meas0_prep1": 0.001953125,
+            "prob_meas1_prep0": 0.0009765625,
+            "readout_length": 2.584e-06
+        },
+        {
+            "number": 61,
+            "T1": 0.00033400742829072243,
+            "T2": 0.00035467031979232637,
+            "frequency": null,
+            "anharmonicity": null,
+            "readout_error": 0.0045166015625,
+            "prob_meas0_prep1": 0.0029296875,
+            "prob_meas1_prep0": 0.002197265625,
+            "readout_length": 2.584e-06
+        },
+        {
+            "number": 62,
+            "T1": 0.00032787138088576697,
+            "T2": 0.0003837192542249964,
+            "frequency": null,
+            "anharmonicity": null,
+            "readout_error": 0.001953125,
+            "prob_meas0_prep1": 0.00341796875,
+            "prob_meas1_prep0": 0.00048828125,
+            "readout_length": 2.584e-06
+        },
+        {
+            "number": 63,
+            "T1": 0.0002928945971785677,
+            "T2": 0.0003747346298420143,
+            "frequency": null,
+            "anharmonicity": null,
+            "readout_error": 0.0042724609375,
+            "prob_meas0_prep1": 0.006103515625,
+            "prob_meas1_prep0": 0.00244140625,
+            "readout_length": 2.584e-06
+        },
+        {
+            "number": 76,
+            "T1": 0.00024953453455271864,
+            "T2": 0.0003138012257277894,
+            "frequency": null,
+            "anharmonicity": null,
+            "readout_error": 0.0030517578125,
+            "prob_meas0_prep1": 0.003173828125,
+            "prob_meas1_prep0": 0.0029296875,
+            "readout_length": 2.584e-06
+        },
+        {
+            "number": 80,
+            "T1": 0.0003178751402820707,
+            "T2": 0.0003999528372446722,
+            "frequency": null,
+            "anharmonicity": null,
+            "readout_error": 0.001708984375,
+            "prob_meas0_prep1": 0.002197265625,
+            "prob_meas1_prep0": 0.001220703125,
+            "readout_length": 2.584e-06
+        },
+        {
+            "number": 81,
+            "T1": 0.0004325638259916474,
+            "T2": 0.0005623725915771227,
+            "frequency": null,
+            "anharmonicity": null,
+            "readout_error": 0.0032958984375,
+            "prob_meas0_prep1": 0.00341796875,
+            "prob_meas1_prep0": 0.003173828125,
+            "readout_length": 2.584e-06
+        }
+    ]
+}

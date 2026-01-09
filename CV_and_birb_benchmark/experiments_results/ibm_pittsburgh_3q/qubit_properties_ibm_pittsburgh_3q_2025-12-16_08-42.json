@@ -1,0 +1,39 @@
+{
+    "backend_name": "ibm_pittsburgh",
+    "qubits": 3,
+    "qubit_properties_list": [
+        {
+            "number": 131,
+            "T1": 0.00031012287392343196,
+            "T2": 0.00037749272445008146,
+            "frequency": null,
+            "anharmonicity": null,
+            "readout_error": 0.0087890625,
+            "prob_meas0_prep1": 0.014892578125,
+            "prob_meas1_prep0": 0.002685546875,
+            "readout_length": 2.584e-06
+        },
+        {
+            "number": 132,
+            "T1": 0.0004142235409707823,
+            "T2": 0.0003919686180336946,
+            "frequency": null,
+            "anharmonicity": null,
+            "readout_error": 0.0087890625,
+            "prob_meas0_prep1": 0.011962890625,
+            "prob_meas1_prep0": 0.005615234375,
+            "readout_length": 2.584e-06
+        },
+        {
+            "number": 133,
+            "T1": 0.00030510474277130247,
+            "T2": 0.00027904160320430595,
+            "frequency": null,
+            "anharmonicity": null,
+            "readout_error": 0.00439453125,
+            "prob_meas0_prep1": 0.003662109375,
+            "prob_meas1_prep0": 0.005126953125,
+            "readout_length": 2.584e-06
+        }
+    ]
+}

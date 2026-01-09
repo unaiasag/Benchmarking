@@ -1,0 +1,17 @@
+
+config:
+  user: "unai"
+  simulation_type: "real"
+  execution_mode: "session"
+  output_path: "experiments_results"
+  circuits_path: "circuits"
+
+experiments:
+  - name: ibm_pittsburgh_7q_v1
+    params:
+      backend: "ibm_pittsburgh"
+      qubits: 7
+      depths: [2, 35, 70, 100]
+      circuits_per_depth: 1000
+      shots_per_circuit: 100
+      percents: [0.2]
