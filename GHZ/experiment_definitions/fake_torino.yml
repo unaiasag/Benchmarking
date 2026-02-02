@@ -11,5 +11,5 @@ experiments:
       delta: 0.01                                  # Confidence level parameter (float)
       epsilon: 0.01                                # Accuracy level parameter (float)
       numero_qubits_inicial: 2                     # Minimum number of qubits to start from (int, at least 2)
-      numero_maximo_qubits: 30                # Maximum number of qubits to test (int, at least 2)
+      numero_maximo_qubits: 4                # Maximum number of qubits to test (int, at least 2)
       simulacion: "true"                             # true to use simulator with noise, false to use real backend

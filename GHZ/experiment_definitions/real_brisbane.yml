@@ -1,0 +1,15 @@
+# experiment_config.yml
+
+config:
+  output_path: "experiment_results"  # Directory where the results and calibration data will be saved
+
+experiments:
+  - name: "GHZ_Benchmark_Test"
+    params:
+      backend: "ibm_brisbane"         # e.g. "ibmq_belem" or "ibmq_qasm_simulator" or "FakeToronto" as defined in qiskit.providers.fake_provider
+      usuario: "sergio"            # e.g. "johndoe"
+      delta: 0.01                                  # Confidence level parameter (float)
+      epsilon: 0.01                                # Accuracy level parameter (float)
+      numero_qubits_inicial: 2                     # Minimum number of qubits to start from (int, at least 2)
+      numero_maximo_qubits: 8                # Maximum number of qubits to test (int, at least 2)
+      simulacion: "false"                             # true to use simulator with noise, false to use real backend
