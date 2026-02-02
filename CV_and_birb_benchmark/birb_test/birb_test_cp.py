@@ -63,7 +63,7 @@ class BiRBTestCP(BiRBTest):
                          circuits_per_depth, shots_per_circuit)
 
         self.percent = percent
-        self.tolerance = 0.0005
+        self.tolerance = 0.005
 
         self.adapted_percent = -1
         self.depth_2q_gate = -1

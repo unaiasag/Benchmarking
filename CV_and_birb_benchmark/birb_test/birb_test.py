@@ -36,6 +36,7 @@ from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
 from rich.console import Console
 from rich.panel import Panel
 from rich.align import Align
+import networkx as nx
 
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 
@@ -43,6 +44,44 @@ def _worker_generate(args):
 
         obj, depth = args
         return obj._generateCircuit(depth)
+
+def couplingmap_to_nx_graph(cm, nodes=None, undirected=True):
+    # Materialize edges into a plain list of (int, int)
+    edges = [(int(u), int(v)) for (u, v) in list(cm.get_edges())]
+
+    G = nx.Graph() if undirected else nx.DiGraph()
+    G.add_edges_from(edges)
+
+    # Add nodes explicitly (critical if there are isolated qubits / zero edges)
+    if nodes is not None:
+        G.add_nodes_from([int(x) for x in nodes])
+
+    return G
+
+def is_connected_subset(backend, subset):
+    cm = restricted_coupling_map(backend, subset)
+    G = couplingmap_to_nx_graph(cm, nodes=subset, undirected=True)
+
+    # For size 0/1 subsets, treat as connected
+    if len(subset) <= 1:
+        return True
+
+    return nx.is_connected(G)
+
+def restricted_coupling_map(backend, subset):
+    subset = set(subset)
+    full_cm = backend.coupling_map
+
+    # Keep only edges fully inside the subset
+    edges = [(u, v) for (u, v) in full_cm.get_edges()
+             if u in subset and v in subset]
+
+    return CouplingMap(edges)
+
+def initial_layout_for_subset(circuit, subset):
+    if len(circuit.qubits) != len(subset):
+        raise ValueError("Subset size must equal number of logical qubits in the circuit.")
+    return Layout({circuit.qubits[i]: subset[i] for i in range(len(subset))})
 
 class BiRBTest(ABC):
     """
@@ -532,6 +571,32 @@ class BiRBTest(ABC):
 
         return initial_pauli, estabilizer_circuit, cliffords, final_circuit, final_pauli
     
+    def _selectTranspileSubset(self):
+        circuits = []
+        for depth in self.depths:
+            for _ in range(100):
+                _, _, _, circuit, _ = self._generateCircuit(depth)
+                circuits.append(circuit)
+
+        pm3 = generate_preset_pass_manager(optimization_level=3, backend=self.backend)
+        pm3.post_optimization = PassManager([
+            OptimizeSwapBeforeMeasure(),
+            RemoveBarriers(),
+            BarrierBeforeFinalMeasurements(),
+        ])
+
+        transpiled = pm3.run(circuits)
+
+        counter = Counter()
+        for tc in transpiled:
+            fl = tc.layout.final_layout  # Layout
+            phys_subset = tuple(sorted(fl.get_physical_bits().keys()))
+            if is_connected_subset(self.backend, phys_subset):
+                counter[phys_subset] += 1
+
+        most_common_subset, _ = counter.most_common(1)[0]
+        return list(most_common_subset)  # sorted physical indices
+
     def _selectTranspileLayout(self):
         """
         Selects the most repeated layout in the transpilation of various 
@@ -562,7 +627,8 @@ class BiRBTest(ABC):
         for circuit in transpiled_circuits:
             layout = tuple(circuit.layout.final_index_layout())
             layout_set = frozenset(layout)
-            counter[layout_set] += 1
+            if is_connected_subset(self.backend, layout_set):
+                counter[layout_set] += 1
 
         # Return the most common layout
         most_repeated_set, _ = counter.most_common(1)[0]
@@ -615,7 +681,9 @@ class BiRBTest(ABC):
                                '_depth_X.pk' will be appended.
         """
 
-        layout = self._selectTranspileLayout()
+        subset = self._selectTranspileLayout()
+        #subset = self._selectTranspileSubset()
+        cm_restricted = restricted_coupling_map(self.backend, subset)
         
         console = Console()
         console.print("")
@@ -654,7 +722,8 @@ class BiRBTest(ABC):
                     final_paulis.append(final_pauli)
 
                 target = self.backend.target
-                pm3 = generate_preset_pass_manager(optimization_level=3, backend=self.backend, initial_layout=layout, target=target)
+                layout = initial_layout_for_subset(circuits[0], subset)
+                pm3 = generate_preset_pass_manager(optimization_level=3, backend=self.backend, initial_layout=layout, coupling_map=cm_restricted)#, target=target)
                 pm3.post_optimization = PassManager([
                                         OptimizeSwapBeforeMeasure(),
                                         RemoveBarriers(),                 # harmless clean-up
