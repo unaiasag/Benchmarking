@@ -1,6 +1,6 @@
 import os
 import pickle
-from collections import Counter
+from collections import Counter, deque
 import random
 import sys
 import statistics
@@ -82,6 +82,67 @@ def initial_layout_for_subset(circuit, subset):
     if len(circuit.qubits) != len(subset):
         raise ValueError("Subset size must equal number of logical qubits in the circuit.")
     return Layout({circuit.qubits[i]: subset[i] for i in range(len(subset))})
+
+def _backend_to_coupling_map(backend) -> CouplingMap:
+    """
+    Best-effort extraction of a CouplingMap from a Qiskit backend.
+    Handles both backend.configuration().coupling_map and backend.target cases.
+    """
+    # Classic backends
+    if hasattr(backend, "configuration"):
+        cfg = backend.configuration()
+        if hasattr(cfg, "coupling_map") and cfg.coupling_map:
+            return CouplingMap(cfg.coupling_map)
+
+    # Target-based backends (Qiskit Runtime / newer providers)
+    if hasattr(backend, "target") and backend.target is not None:
+        # Target has a build_coupling_map() helper in many Qiskit versions
+        if hasattr(backend.target, "build_coupling_map"):
+            return backend.target.build_coupling_map()
+
+        # Fallback: try to infer edges from target instruction properties
+        # (This is a last resort; build_coupling_map is preferred.)
+        edges = set()
+        for inst, qargs in getattr(backend.target, "qargs", {}).items():
+            # Not all versions expose this in the same way; keep it defensive.
+            pass
+
+    raise ValueError("Could not extract a coupling map from backend.")
+
+def _find_any_connected_subset(cm: CouplingMap, k: int) -> list[int]:
+    """
+    Returns a list of k physical qubits that form a connected subset
+    in the undirected version of the coupling graph.
+    Uses BFS expansion from each node until k nodes are collected.
+    """
+    if k <= 0:
+        return []
+
+    # CouplingMap edges are directed; we treat connectivity as undirected here.
+    undirected_adj = {i: set() for i in range(cm.size())}
+    for u, v in cm.get_edges():
+        undirected_adj[u].add(v)
+        undirected_adj[v].add(u)
+
+    # Try BFS from each node; pick the first that can reach k nodes.
+    for start in range(cm.size()):
+        visited = []
+        seen = set([start])
+        q = deque([start])
+
+        while q and len(visited) < k:
+            node = q.popleft()
+            visited.append(node)
+            for nb in undirected_adj[node]:
+                if nb not in seen:
+                    seen.add(nb)
+                    q.append(nb)
+
+        if len(visited) >= k:
+            return visited[:k]
+
+    raise ValueError(f"No connected subset of size {k} exists on this hardware.")
+
 
 class BiRBTest(ABC):
     """
@@ -599,30 +660,30 @@ class BiRBTest(ABC):
 
     def _selectTranspileLayout(self):
         """
-        Selects the most repeated layout in the transpilation of various 
-        circuits (len(depths) x 100).
-
-        Returns:
-            list[int]: A layout (mapping of logical to physical qubits) that appears
-                       most frequently after transpiling test circuits.
+        Selects the most repeated *connected* layout set in the transpilation of various circuits.
+        If none are found, returns any connected set of physical qubits of size n_qubits.
         """
-
-        # Generate and transpile the circuits 
+        # Generate and transpile the circuits
         circuits = []
         for depth in self.depths:
             for _ in range(100):
                 _, _, _, circuit, _ = self._generateCircuit(depth)
                 circuits.append(circuit)
-        
+
+        if not circuits:
+            raise ValueError("No circuits generated; cannot select a transpile layout.")
+
+        n_qubits = circuits[0].num_qubits  # assumes all generated circuits have same width
+
         pm3 = generate_preset_pass_manager(optimization_level=3, backend=self.backend)
         pm3.post_optimization = PassManager([
-                                OptimizeSwapBeforeMeasure(),
-                                RemoveBarriers(),                 # harmless clean-up
-                                BarrierBeforeFinalMeasurements(), # preserves measurement structure
-                                ])
+            OptimizeSwapBeforeMeasure(),
+            RemoveBarriers(),
+            BarrierBeforeFinalMeasurements(),
+        ])
         transpiled_circuits = pm3.run(circuits)
 
-        # Count layout repetitions
+        # Count layout repetitions (only counting connected subsets)
         counter = Counter()
         for circuit in transpiled_circuits:
             layout = tuple(circuit.layout.final_index_layout())
@@ -630,10 +691,14 @@ class BiRBTest(ABC):
             if is_connected_subset(self.backend, layout_set):
                 counter[layout_set] += 1
 
-        # Return the most common layout
-        most_repeated_set, _ = counter.most_common(1)[0]
-        
-        return list(most_repeated_set)  
+        # If we found at least one connected layout-set, return the most frequent.
+        if counter:
+            most_repeated_set, _ = counter.most_common(1)[0]
+            return list(most_repeated_set)
+
+        # Otherwise: fallback to ANY connected subset of size n_qubits from hardware
+        cm = _backend_to_coupling_map(self.backend)
+        return _find_any_connected_subset(cm, n_qubits)
 
     def _processBatchResults(self, results, paulis):
         evs = []
