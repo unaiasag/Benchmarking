@@ -20,13 +20,13 @@ from qiskit.quantum_info import Pauli
 from qiskit_ibm_runtime import Estimator, EstimatorOptions, Sampler, SamplerOptions
 from qiskit_ibm_runtime.options import TwirlingOptions, EnvironmentOptions, ResilienceOptionsV2 as ResilienceOptions
 
-from utils.benchmark import run_GHZ_experiment, compute_l, sample_ghz_stabilizer, process_results
+from utils.benchmark import required_shots_witnesses, run_GHZ_experiment, compute_l, sample_ghz_stabilizer, process_results, run_GHZ_Witnesses_experiment
 from utils.circuits import create_ghz_circuit
 
 from qiskit.circuit import ParameterVector
 
 class GHZExperiment():
-    def __init__(self, num_qubits, circuit, transpiled_circuit, l, signs, m_i, observables, backend):
+    def __init__(self, num_qubits, circuit, transpiled_circuit, l, signs, m_i, observables, backend, benchmark="RS"):
         """
         Docstring for __init__
         :param num_qubits: Description
@@ -38,6 +38,7 @@ class GHZExperiment():
         :param m_i: Description
         :param observables: Description
         :param backend: Description
+        :param benchmark: Description
         """ 
         self.num_qubits = num_qubits
         self.circuit = circuit
@@ -46,92 +47,161 @@ class GHZExperiment():
         self.observable_isa = observables
         self.signs = signs
         self.m_i = m_i
-        self.observables = [str(obs) for obs in observables]
+        self.observables = [str(obs) for obs in observables] if observables is not None else None
         self.backend = backend
+        self.benchmark = benchmark
 
     def prepare_experiment(self, execution_mode="vqc"):
         self.execution_mode = execution_mode
 
-        if execution_mode == "vqc":
+        if self.benchmark == "RS":
 
-            inputs = ParameterVector("x", self.circuit.num_qubits*2)
-           
-            values = np.zeros(self.circuit.num_qubits*2)
-            # Create fresh circuit with classical bits
-            qc = QuantumCircuit(self.circuit.num_qubits, self.circuit.num_qubits)
-            qc.compose(self.circuit, inplace=True)
+            if execution_mode == "vqc":
 
-            for qubit in range(self.circuit.num_qubits):
-                gate1_id = qubit * 2
-                gate2_id = gate1_id + 1
-
-                qc.rz(inputs[gate1_id], qubit)
-                qc.ry(inputs[gate2_id], qubit)
-                qc.measure(qubit, qubit)
-
-            circuit = transpile_circuit(qc, backend=self.backend)
-
-            parameter_sets = []
-
-            for observable in self.observables:
-                iterable = iter(range(len(inputs)))
-
-                # Add measurement in the Pauli basis
-                for qubit, pauli in enumerate(observable):
-                    
-                    gate1_id = next(iterable)
-                    gate2_id = next(iterable)
-
-                    if pauli == 'X':
-                        values[gate1_id] = np.pi
-                        values[gate2_id] = np.pi/2
-                    elif pauli == 'Y':
-                        values[gate1_id] = np.pi/2
-                        values[gate2_id] = np.pi/2
-                    elif pauli in ['Z', 'I']:
-                        values[gate1_id] = 0
-                        values[gate2_id] = 0
-
-                if circuit.num_parameters != len(values):
-                    print(circuit.draw('text'))
-                    raise ValueError(f"Number of parameters in the circuit ({circuit.num_parameters}) does not match the number of values provided ({len(values)}).")                 
-
-                parameter_sets.append(values.tolist())
-    
-            self.pubs = [(circuit, parameter_sets)]
-
-        elif execution_mode == "sampler":
-            pubs = []
-            for observable in self.observables:
+                inputs = ParameterVector("x", self.circuit.num_qubits*2)
+            
+                values = np.zeros(self.circuit.num_qubits*2)
                 # Create fresh circuit with classical bits
                 qc = QuantumCircuit(self.circuit.num_qubits, self.circuit.num_qubits)
                 qc.compose(self.circuit, inplace=True)
 
-                # Add measurement in the Pauli basis
-                for qubit, pauli in enumerate(observable):
-                    if pauli == 'X':
-                        qc.rz(np.pi, qubit)
-                        qc.ry(np.pi/2, qubit)
-                        #qc.h(qubit)
-                    elif pauli == 'Y':
-                        qc.rz(np.pi/2, qubit) # S† = Rz(-π/2), but Rz(π) = Rz(-π) for the H gate, so we use Rz(π/2)
-                        qc.ry(np.pi/2, qubit)
-                    
+                for qubit in range(self.circuit.num_qubits):
+                    gate1_id = qubit * 2
+                    gate2_id = gate1_id + 1
+
+                    qc.rz(inputs[gate1_id], qubit)
+                    qc.ry(inputs[gate2_id], qubit)
                     qc.measure(qubit, qubit)
 
-                pubs.append((qc))
-            self.pubs = pubs
+                circuit = transpile_circuit(qc, backend=self.backend)
 
-        elif execution_mode == "estimator":
-            self.observable_isa = [observable.apply_layout(layout=self.transpiled_circuit.layout) for observable in self.observables]
-            self.pubs = [(self.transpiled_circuit, observable ) for observable in self.observable_isa]
+                parameter_sets = []
+
+                for observable in self.observables:
+                    iterable = iter(range(len(inputs)))
+
+                    # Add measurement in the Pauli basis
+                    for qubit, pauli in enumerate(observable):
+                        
+                        gate1_id = next(iterable)
+                        gate2_id = next(iterable)
+
+                        if pauli == 'X':
+                            values[gate1_id] = np.pi
+                            values[gate2_id] = np.pi/2
+                        elif pauli == 'Y':
+                            values[gate1_id] = np.pi/2
+                            values[gate2_id] = np.pi/2
+                        elif pauli in ['Z', 'I']:
+                            values[gate1_id] = 0
+                            values[gate2_id] = 0
+
+                    if circuit.num_parameters != len(values):
+                        print(circuit.draw('text'))
+                        raise ValueError(f"Number of parameters in the circuit ({circuit.num_parameters}) does not match the number of values provided ({len(values)}).")                 
+
+                    parameter_sets.append(values.tolist())
+        
+                self.pubs = [(circuit, parameter_sets)]
+
+            elif execution_mode == "sampler":
+                pubs = []
+                for observable in self.observables:
+                    # Create fresh circuit with classical bits
+                    qc = QuantumCircuit(self.circuit.num_qubits, self.circuit.num_qubits)
+                    qc.compose(self.circuit, inplace=True)
+
+                    # Add measurement in the Pauli basis
+                    for qubit, pauli in enumerate(observable):
+                        if pauli == 'X':
+                            qc.rz(np.pi, qubit)
+                            qc.ry(np.pi/2, qubit)
+                            #qc.h(qubit)
+                        elif pauli == 'Y':
+                            qc.rz(np.pi/2, qubit) # S† = Rz(-π/2), but Rz(π) = Rz(-π) for the H gate, so we use Rz(π/2)
+                            qc.ry(np.pi/2, qubit)
+                        
+                        qc.measure(qubit, qubit)
+
+                    pubs.append((qc))
+                self.pubs = pubs
+
+            elif execution_mode == "estimator":
+                self.observable_isa = [observable.apply_layout(layout=self.transpiled_circuit.layout) for observable in self.observables]
+                self.pubs = [(self.transpiled_circuit, observable ) for observable in self.observable_isa]
+            else:
+                raise ValueError(f"Unsupported execution mode: {execution_mode}. Supported modes are 'estimator', 'sampler', and 'vqc'.")
+        
+        elif self.benchmark == "Witnesses":
+            if execution_mode == "vqc":
+
+                N = self.circuit.num_qubits
+                inputs = ParameterVector("x", N * 2)
+                values = np.zeros(N * 2)
+
+                qc = QuantumCircuit(N, N)
+                qc.compose(self.circuit, inplace=True)
+
+                for qubit in range(N):
+                    gate1_id = qubit * 2       
+                    gate2_id = gate1_id + 1    
+
+                    qc.rz(inputs[gate1_id], qubit)
+                    qc.ry(inputs[gate2_id], qubit)
+                    qc.measure(qubit, qubit)
+
+                circuit = transpile_circuit(qc, backend=self.backend)
+
+                parameter_sets = []
+
+                # POPULATION 
+                values = np.zeros(N * 2)
+
+                for qubit in range(N):
+                    gate1_id = qubit * 2
+                    gate2_id = gate1_id + 1
+
+                    values[gate1_id] = 0.0     # Rz
+                    values[gate2_id] = 0.0     # Ry
+
+                parameter_sets.append(values.tolist())
+
+                # COHERENCE
+                for k in range(1, N + 1):
+
+                    theta_k = k * np.pi / N
+                    values = np.zeros(N * 2)
+
+                    for qubit in range(N):
+                        gate1_id = qubit * 2
+                        gate2_id = gate1_id + 1
+
+                        values[gate1_id] = -theta_k     # Rz(-θk)
+                        values[gate2_id] = -np.pi / 2   # Ry(-π/2)
+
+                    parameter_sets.append(values.tolist())
+
+                # sanity check
+                if circuit.num_parameters != len(values):
+                    print(circuit.draw('text'))
+                    raise ValueError(
+                        f"Number of parameters ({circuit.num_parameters}) "
+                        f"!= provided ({len(values)})"
+                    )
+
+                self.pubs = [(circuit, parameter_sets)]
+            else:
+                raise ValueError(f"Unsupported execution mode for Witnesses benchmark: {execution_mode}. Supported mode is 'vqc'.")
         else:
-            raise ValueError(f"Unsupported execution mode: {execution_mode}. Supported modes are 'estimator', 'sampler', and 'vqc'.")
+            raise ValueError(f"Unsupported benchmark type: {self.benchmark}. Supported benchmarks are 'RS' and 'Witnesses'.")
 
     def run_experiment(self, mode):
-        return run_GHZ_experiment(pubs=self.pubs, num_qubits=self.num_qubits, mode=mode, l=self.l, 
-                                  observable_isa=self.observable_isa, signs=self.signs, m_i=self.m_i, 
-                                  execution_mode=self.execution_mode)
+        if self.benchmark == "RS":
+            return run_GHZ_experiment(pubs=self.pubs, num_qubits=self.num_qubits, mode=mode, l=self.l, 
+                                    observable_isa=self.observable_isa, signs=self.signs, m_i=self.m_i, 
+                                    execution_mode=self.execution_mode)
+        elif self.benchmark == "Witnesses":
+            return run_GHZ_Witnesses_experiment(pubs=self.pubs, num_qubits=self.num_qubits, shots=self.m_i, mode=mode)
 
 def transpile_circuit(circuit, backend, optimization_level=3):
     pass_manager = generate_preset_pass_manager(backend=backend, optimization_level=optimization_level)
@@ -242,7 +312,9 @@ def loadAndRunExperiments(file):
 
         console.print(table)
         execution_mode = "vqc"  # Could be "estimator", "sampler", or "vqc"
+        search_strategy = "binary"  # Could be "linear" or "binary"
         run_mode = "Session" # Could be "Session" or "Batch"
+        benchmark = "Witnesses" # Could be "RS" or "Witnesses"
         max_retries = 3
 
         if params['simulacion'].lower() == "true":
@@ -256,7 +328,7 @@ def loadAndRunExperiments(file):
                 # Create noisy simulator backend
                 backend = AerSimulator().from_backend(backend_data)
         else:
-            service = QiskitRuntimeService(channel="ibm_cloud", instance=params.get("instance", None), user=params.get("usuario", None))
+            service = QiskitRuntimeService(channel="ibm_cloud", instance=params.get("instance", None), name=params.get("usuario", None))
             backend = service.backends(name=params['backend'])[0]
  
         backend_qubits = backend.configuration().n_qubits
@@ -312,12 +384,13 @@ def loadAndRunExperiments(file):
                             target,
                             filepath_qubit_properties,
                             filepath_target)
-
+        
         l = compute_l(epsilon=params['epsilon'], delta=params['delta'])  # Example values for epsilon and delta
         m_i = 1
 
-        experiments = []
-        for num_qubits in range(params['numero_qubits_inicial'], maximo + 1):
+        experiments = {}
+        smaller_size = params['numero_qubits_inicial']
+        for num_qubits in range(smaller_size, maximo + 1):
 
             untranspiled_circuit = best_untranspiled_circuits[num_qubits]
             # Save the circuit
@@ -335,13 +408,19 @@ def loadAndRunExperiments(file):
             circuit_file_image = os.path.join(circuits_folder, f"{circuit_name}.png")
             circuit.draw(output='mpl').savefig(circuit_file_image)
 
-            samples = sample_ghz_stabilizer(num_qubits, l)
-            observables = [Pauli(p) for (p, _) in samples]
-            signs = np.array([sign for (_, sign) in samples])
-            
-            experiment = GHZExperiment(num_qubits, untranspiled_circuit, circuit, l, signs, m_i, observables, backend)
+            if benchmark == "RS":
+                samples = sample_ghz_stabilizer(num_qubits, l)
+                observables = [Pauli(p) for (p, _) in samples]
+                signs = np.array([sign for (_, sign) in samples])
+                experiment = GHZExperiment(num_qubits, untranspiled_circuit, circuit, l, signs, m_i, observables, backend, benchmark=benchmark)
+            elif benchmark == "Witnesses":
+                observables = None
+                signs = None
+                l = None # l is not needed for the Witnesses benchmark, but we keep it as a parameter for simplicity
+                m_i = required_shots_witnesses(num_qubits, params['epsilon'], params['delta'])
+                experiment = GHZExperiment(num_qubits, untranspiled_circuit, circuit, l, signs, m_i, observables, backend, benchmark=benchmark)
             experiment.prepare_experiment(execution_mode=execution_mode)
-            experiments.append(experiment)
+            experiments[num_qubits] = experiment
         
         if run_mode == "Session":
             num_qubits = params['numero_qubits_inicial'] - 1
@@ -351,40 +430,93 @@ def loadAndRunExperiments(file):
 
             try:
                 with Session(backend=backend) as session:
-                    for experiment in experiments:
-                        console.print(f"Ejecutando experimento para {num_qubits + 1} qubits...")
+                    if search_strategy == "linear":
+                        for num_qubits, experiment in experiments.items():
+                            try:
+                                # Run the GHZ experiment
+                                result = experiment.run_experiment(mode=session)
 
-                        try:
-                            # Run the GHZ experiment
-                            result = experiment.run_experiment(mode=session)
+                                observables = experiment.observables
+                                num_qubits = experiment.num_qubits
+                                expected_vals, fidelity_estimate = result
 
-                            observables = experiment.observables
-                            num_qubits = experiment.num_qubits
-                            expected_vals, fidelity_estimate = result
-
-                            results_to_save.append(
-                                (num_qubits, observables, expected_vals, fidelity_estimate)
-                            )
-
-                            if fidelity_estimate < (1 / 2 - params['epsilon']):
-                                retries -= 1
-                                print(
-                                    f"Fidelity estimate {fidelity_estimate} is below the threshold, "
-                                    f"{retries} retries left."
+                                results_to_save.append(
+                                    (num_qubits, observables, expected_vals, fidelity_estimate)
                                 )
-                            else:
-                                retries = max_retries  # reset retries if successful
 
-                            if retries <= 0:
-                                print(
-                                    f"Fidelity estimate {fidelity_estimate} is below the threshold, "
-                                    "stopping further experiments."
-                                )
-                                break
+                                if fidelity_estimate < (1 / 2 - params['epsilon']):
+                                    retries -= 1
+                                    print(
+                                        f"Fidelity estimate {fidelity_estimate} is below the threshold, "
+                                        f"{retries} retries left."
+                                    )
+                                else:
+                                    retries = max_retries  # reset retries if successful
 
-                        except Exception as exp_err:
-                            print(f"⚠️ Error during experiment execution: {exp_err}")
-                            break  # stop further experiments but still save results
+                                if retries <= 0:
+                                    print(
+                                        f"Fidelity estimate {fidelity_estimate} is below the threshold, "
+                                        "stopping further experiments."
+                                    )
+                                    break
+
+                            except Exception as exp_err:
+                                print(f"⚠️ Error during experiment execution: {exp_err}")
+                                break  # stop further experiments but still save results
+
+                    elif search_strategy == "binary":
+                        max_retries = 0  # no retries in binary search, as we will discard half of the search space after each experiment
+                        max_idx = maximo
+                        min_idx = smaller_size
+                        idx = int((max_idx+min_idx) // 2)
+                        end = False
+
+                        while not end:
+                            experiment = experiments[idx]
+                            try:
+                                # Run the GHZ experiment
+                                result = experiment.run_experiment(mode=session)
+
+                                observables = experiment.observables
+                                num_qubits = experiment.num_qubits
+                                if benchmark == "RS":
+                                    expected_vals, fidelity_estimate = result
+
+                                    results_to_save.append(
+                                        (num_qubits, observables, expected_vals, fidelity_estimate)
+                                    )
+                                else: # Witnesses benchmark
+                                    all_counts, P, C, fidelity_estimate = result
+
+                                    results_to_save.append(
+                                        (num_qubits, all_counts, {"P": P, "C": C}, fidelity_estimate)
+                                    )
+
+                                if fidelity_estimate < (1 / 2 - params['epsilon']):
+                                    # If the fidelity is below the threshold discard the upper half of the search space
+                                    max_idx = idx - 1
+                                    if min_idx > max_idx:
+                                        print(
+                                            f"Fidelity estimate {fidelity_estimate} crosses threshold at {idx} qubits. Stopping further experiments."
+                                        )
+                                        end = True
+                                    else:
+                                        idx = int((max_idx+min_idx) // 2)
+                                else:
+                                    # If the fidelity is above the threshold discard the lower half of the search space
+                                    min_idx = idx + 1
+                                    if min_idx > max_idx:
+                                        print(
+                                            f"Fidelity estimate {fidelity_estimate} crosses threshold at {idx+1} qubits. Stopping further experiments."
+                                        )
+                                        end = True
+                                    else:
+                                        idx = int((max_idx+min_idx) // 2)
+
+
+                            except Exception as exp_err:
+                                print(f"⚠️ Error during experiment execution: {exp_err}")
+                                end = True  # stop further experiments but still save results
 
             except Exception as session_err:
                 print(f"🔥 Session-level error occurred: {session_err}")
@@ -392,18 +524,32 @@ def loadAndRunExperiments(file):
             finally:
                 # ALWAYS save whatever results we have
                 for results in results_to_save:
-                    num_qubits, observables, expected_vals, fidelity_estimate = results
+                    if benchmark == "RS":
+                        num_qubits, observables, expected_vals, fidelity_estimate = results
 
-                    results_saved = {
-                        "backend": params['backend'],
-                        "numero_qubits_inicial": num_qubits,
-                        "qubits": backend_qubits,
-                        "epsilon": params['epsilon'],
-                        "delta": params['delta'],
-                        "observables": observables,
-                        "expected_values": expected_vals.tolist(),
-                        "fidelity": fidelity_estimate,
-                    }
+                        results_saved = {
+                            "backend": params['backend'],
+                            "numero_qubits_inicial": num_qubits,
+                            "qubits": backend_qubits,
+                            "epsilon": params['epsilon'],
+                            "delta": params['delta'],
+                            "observables": observables,
+                            "expected_values": expected_vals.tolist(),
+                            "fidelity": fidelity_estimate,
+                        }
+                    else: # Witnesses benchmark
+                        num_qubits, all_counts, P_C_dict, fidelity_estimate = results
+
+                        results_saved = {
+                            "backend": params['backend'],
+                            "numero_qubits_inicial": num_qubits,
+                            "qubits": backend_qubits,
+                            "epsilon": params['epsilon'],
+                            "delta": params['delta'],
+                            "all_counts": all_counts,
+                            "P_C": P_C_dict,
+                            "fidelity": fidelity_estimate,
+                        }
 
                     file_name_results = (
                         f"results_{params['backend']}_{num_qubits}q_{start_date_str}.json"
@@ -417,6 +563,8 @@ def loadAndRunExperiments(file):
 
         
         elif run_mode == "Batch":
+            if search_strategy != "linear":
+                print("⚠️ Search strategy for Batch mode is always linear, ignoring the provided search strategy.")
             batch = Batch(backend=backend)
             experiments_jobs = []
             tags = [f"{num_qubits}qb", f"l={l}"]
@@ -428,7 +576,7 @@ def loadAndRunExperiments(file):
                 primitive = Sampler(mode=batch, options=SamplerOptions(default_shots=m_i, twirling=twirling_options, environment=environment_options))
             elif execution_mode == "estimator":
                 primitive = Estimator(mode=batch, options=EstimatorOptions(default_shots=m_i, twirling=twirling_options, environment=environment_options, resilience=resilience, resilience_level=0))
-            for experiment in experiments:
+            for num_qubits, experiment in experiments.items():
                 # TODO: job partition strategy for large experiments
                 jobs = [(primitive.run(experiment.pubs), experiment.observable_isa, experiment.observables, experiment.signs)]
                 experiments_jobs.append(jobs)

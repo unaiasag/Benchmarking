@@ -4,6 +4,9 @@ from qiskit import QuantumCircuit
 from qiskit.quantum_info import Clifford, Pauli
 from qiskit_ibm_runtime import Estimator, EstimatorOptions, Sampler, SamplerOptions
 from qiskit_ibm_runtime.options import TwirlingOptions, EnvironmentOptions, ResilienceOptionsV2 as ResilienceOptions
+from collections import Counter
+
+
 
 def compute_l(epsilon, delta):
     '''
@@ -225,3 +228,61 @@ def process_results(pub_results, execution_mode, observables):
         return np.array(evs)
     else:
         raise ValueError(f"Unsupported execution mode: {execution_mode}. Supported modes are 'estimator', 'sampler', and 'vqc'.")
+    
+def required_shots_witnesses(N, eps, delta):
+    return int((2/eps**2) * np.log(2*(N+1)/delta))
+
+def estimate_P(counts, N):
+    total = sum(counts.values())
+    return (
+        counts.get("0"*N, 0) +
+        counts.get("1"*N, 0)
+    ) / total
+
+def parity(bitstring):
+    return (-1)**(sum(int(b) for b in bitstring))
+
+def estimate_Mk(counts):
+    total = sum(counts.values())
+    val = 0
+    for b, c in counts.items():
+        val += parity(b) * c
+    return val / total
+
+def estimate_C(all_counts, N):
+    C = 0
+
+    for k in range(1, N+1):
+        Mk = estimate_Mk(all_counts[k])
+        C += ((-1)**k) * Mk
+
+    return C / N
+
+
+
+def run_GHZ_Witnesses_experiment(pubs, num_qubits, shots, mode):
+    tags = [f"{num_qubits}qb", f"l={shots}", "Witnesses"]
+    twirling_options = TwirlingOptions(enable_measure = False) # To disable default measurement twirling
+    environment_options = EnvironmentOptions(job_tags = tags)
+    resilience = ResilienceOptions(measure_mitigation = False) # To disable default measurement mitigation
+
+    sampler = Sampler(mode=mode, options=SamplerOptions(default_shots=shots, twirling=twirling_options, environment=environment_options))
+    #sampler.options.resilience_level = 0
+
+    job = sampler.run(pubs)
+    pub_results = job.result()
+    bitstrings_all = pub_results[0].data.c.get_bitstrings()
+    bitstrings_split = [bitstrings_all[i*shots:(i+1)*shots] for i in range(num_qubits+1)]
+        
+    all_counts = [
+        dict(Counter(bitstrings))
+        for bitstrings in bitstrings_split
+    ]
+    
+
+    P = estimate_P(all_counts[0], num_qubits)
+    C = estimate_C(all_counts, num_qubits)
+
+    F = (P + C) / 2
+
+    return all_counts, P, C, F
