@@ -1,0 +1,17 @@
+OPENQASM 3.0;
+include "stdgates.inc";
+rz(pi/2) $10;
+sx $10;
+rz(pi) $10;
+rz(pi/2) $20;
+sx $20;
+rz(pi/2) $20;
+cz $20, $10;
+sx $10;
+rz(pi/2) $10;
+rz(pi/2) $30;
+sx $30;
+rz(pi) $30;
+cz $20, $30;
+sx $30;
+rz(pi/2) $30;
