@@ -2,7 +2,7 @@ import numpy as np
 
 from datetime import datetime
 
-from utils.aws_benchmark import required_shots_witnesses, run_GHZ_Witnesses_experiment
+from utils.aws_benchmark import required_shots_witnesses, run_GHZ_Witnesses_experiment, sample_ghz_stabilizer, observable_from_string, compute_l, run_GHZ_RF_experiment
 from utils.aws_circuits import create_ghz_circuit
 
 from braket.aws import AwsDevice
@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger("qcentroid-user-log")
 
 class GHZExperiment():
-    def __init__(self, num_qubits, circuit, l, m_i, backend):
+    def __init__(self, num_qubits, circuit, l, m_i, backend, min_shots=1):
         """
         Docstring for __init__
         :param num_qubits: Number of qubits in the GHZ state
@@ -27,28 +27,18 @@ class GHZExperiment():
         self.l = l
         self.m_i = m_i
         self.backend = backend
-
+        self.min_shots = min_shots
     def prepare_experiment(self):
 
-        N = self.num_qubits
-        circuits = [self.circuit.copy()]
+        samples = sample_ghz_stabilizer(self.num_qubits, self.l)
+        observables = [observable_from_string(p) for (p, _) in samples]
+        signs = np.array([sign for (_, sign) in samples])
 
-        # COHERENCE
-        for k in range(1, N + 1):
-            circuit_ = self.circuit.copy()
-
-            theta_k = k * np.pi / N
-
-            for qubit in range(N):
-                circuit_.rz(qubit, -theta_k)     # Rz(-θk)
-                circuit_.ry(qubit, -np.pi / 2)  # Ry(-π/2)
-
-            circuits.append(circuit_)
-
-        self.pubs = circuits
+        self.observables = observables
+        self.signs = signs
         
     def run_experiment(self):
-        return run_GHZ_Witnesses_experiment(circuits=self.pubs, num_qubits=self.num_qubits, shots=self.m_i, backend=self.backend)
+        return run_GHZ_RF_experiment(circuit=self.circuit, num_qubits=self.num_qubits, observables=self.observables, signs=self.signs, backend=self.backend, min_shots=self.min_shots)
 
 def getBestGHZCircuitsPerQPU(backend_architecture, start_qubits=2, maximo=2):
     """
@@ -76,13 +66,11 @@ def getBestGHZCircuitsPerQPU(backend_architecture, start_qubits=2, maximo=2):
 
     return circuits
 
-def runExperiments(backend_arn, backend_architecture, numero_qubits_inicial, numero_maximo_qubits, epsilon, delta):
+def runExperiments(backend_arn, backend_architecture, numero_qubits_inicial, numero_maximo_qubits, epsilon, delta, min_shots=1):
     # Log the start of the experiment (backend, qubits, epsilon, delta)
     logger.info(f"Backend: {backend_arn}, Qubits: {numero_qubits_inicial}, Epsilon: {epsilon}, Delta: {delta}")
 
-    #backend = AwsDevice(backend_arn)
     backend = BraketLoader.get_target()
-    
     backend_qubits = numero_maximo_qubits
 
     start_date = datetime.now()
@@ -97,21 +85,10 @@ def runExperiments(backend_arn, backend_architecture, numero_qubits_inicial, num
     for num_qubits in range(smaller_size, maximo + 1):
         # Save the circuit
         circuit = best_circuits[num_qubits]
-        """circuit_name = f"GHZ_{num_qubits}q"
-
-        # on test save the circuit image as well
-        circuit_file_image = os.path.join(circuits_folder, f"{circuit_name}.png")
-        diagram = circuit.diagram()
-
-        plt.figure(figsize=(6,2))
-        plt.text(0.01, 0.5, diagram, family="monospace")
-        plt.axis("off")
-        plt.savefig(circuit_file_image, dpi=300)
-        plt.close()"""
         
-        l = None # l is not needed for the Witnesses benchmark, but we keep it as a parameter for simplicity
-        m_i = required_shots_witnesses(num_qubits, epsilon, delta)
-        experiment = GHZExperiment(num_qubits, circuit, l, m_i, backend)
+        l = compute_l(epsilon, delta)
+        m_i = None # m_i is not needed for the RF benchmark, but we keep it as a parameter for simplicity
+        experiment = GHZExperiment(num_qubits, circuit, l, m_i, backend, min_shots=min_shots)
         experiment.prepare_experiment()
         experiments[num_qubits] = experiment
     
@@ -131,10 +108,10 @@ def runExperiments(backend_arn, backend_architecture, numero_qubits_inicial, num
                 result = experiment.run_experiment()
 
                 num_qubits = experiment.num_qubits
-                fidelity_estimate, P, C, metadata = result
+                fidelity_estimate, metadata = result
 
                 results_to_save.append(
-                    (num_qubits, P, C, fidelity_estimate, metadata)
+                    (num_qubits, fidelity_estimate, metadata)
                 )
 
                 if fidelity_estimate < (1 / 2 - epsilon):
@@ -172,10 +149,8 @@ def runExperiments(backend_arn, backend_architecture, numero_qubits_inicial, num
             "backend": backend_arn,
         }
         for results in results_to_save:
-            num_qubits, P, C, fidelity_estimate, metadata = results
+            num_qubits, fidelity_estimate, metadata = results
             result_dict[f"{num_qubits}_qubits"] = {
-                "P": P,
-                "C": C,
                 "fidelity_estimate": fidelity_estimate,
                 "epsilon": epsilon,
                 "delta": delta,
@@ -191,5 +166,6 @@ def run(input_data:dict, solver_params:dict, extra_arguments:dict) -> dict:
     numero_maximo_qubits = input_data.get("numero_maximo_qubits")
     epsilon = input_data.get("epsilon")
     delta = input_data.get("delta")
+    min_shots = input_data.get("min_shots", 1)
 
-    return runExperiments(backend_arn, backend_architecture, numero_qubits_inicial, numero_maximo_qubits, epsilon, delta)
+    return runExperiments(backend_arn, backend_architecture, numero_qubits_inicial, numero_maximo_qubits, epsilon, delta, min_shots=min_shots)
