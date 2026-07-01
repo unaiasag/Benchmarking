@@ -141,7 +141,25 @@ def run_GHZ_RF_experiment(circuit, num_qubits, observables, signs, backend, min_
     for sub, indices in zip(subs, index_map):
         result_set = backend.run(sub, shots=sub.total_executables*min_shots).result()
 
-        expected_vals = [result.expectation for result in result_set[0]]
+        expected_vals = []
+        for result in result_set[0]:
+            active_qubits = [
+                int(q)
+                for factor in result.observable.factors
+                if factor.name != "I"
+                for q in factor.targets
+            ]
+            
+            columns = [
+                i for i, mq in enumerate(result.measured_qubits)
+                if int(mq) in active_qubits
+            ]
+
+            vals = [
+                (-1)**(np.sum(m[columns]) % 2)
+                for m in result.measurements
+            ]
+            expected_vals.append(vals[0])
         all_expected_vals[indices] = expected_vals
 
         task_ids.append(result_set.task_metadata.id)
