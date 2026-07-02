@@ -3,6 +3,7 @@ import logging
 
 from braket.circuits import Observable
 from braket.program_sets import ProgramSet, CircuitBinding
+from braket.circuits.serialization import IRType
 
 
 from qiskit import QuantumCircuit
@@ -142,6 +143,14 @@ def run_GHZ_RF_experiment(circuit, num_qubits, observables, signs, backend, min_
         result_set = backend.run(sub, shots=sub.total_executables*min_shots).result()
 
         expected_vals = []
+
+        if "ionq" in backend.arn:
+            transpiled_circuit = "Not supported for IONQ"
+        else:
+            print(result_set[0].additional_metadata)
+            print(result_set.task_metadata.programMetadata[0].executables[0])
+            transpiled_circuit = "Not available in program_set" #result.get_compiled_circuit() 
+
         for result in result_set[0]:
             active_qubits = [
                 int(q)
@@ -173,7 +182,9 @@ def run_GHZ_RF_experiment(circuit, num_qubits, observables, signs, backend, min_
         "expected_values": all_expected_vals,
         "task_ids": task_ids,
         "shots": total_shots,
-        "device": device_id
+        "device": device_id,
+        "untranspiled_circuit": circuit.to_ir(IRType.OPENQASM).source,
+        "circuit": transpiled_circuit
     }
 
     return fidelity_estimate, result_dict

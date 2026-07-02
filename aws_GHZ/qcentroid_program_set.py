@@ -72,6 +72,7 @@ def runExperiments(backend_arn, backend_architecture, numero_qubits_inicial, num
 
     backend = BraketLoader.get_target()
     backend_qubits = numero_maximo_qubits
+    backend_properties = backend.properties
 
     start_date = datetime.now()
     start_date_str = start_date.strftime("%Y%m%d_%H%M%S")
@@ -156,6 +157,8 @@ def runExperiments(backend_arn, backend_architecture, numero_qubits_inicial, num
                 "delta": delta,
                 "metadata": metadata,
             }
+        result_dict["properties"] = backend_properties.json()
+        result_dict["date"] = start_date_str
     return result_dict
     
 

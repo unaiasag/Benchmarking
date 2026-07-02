@@ -82,6 +82,7 @@ def runExperiments(backend_arn, backend_architecture, numero_qubits_inicial, num
 
     #backend = AwsDevice(backend_arn)
     backend = BraketLoader.get_target()
+    backend_properties = backend.properties
     
     backend_qubits = numero_maximo_qubits
 
@@ -181,6 +182,8 @@ def runExperiments(backend_arn, backend_architecture, numero_qubits_inicial, num
                 "delta": delta,
                 "metadata": metadata,
             }
+    result_dict["properties"] = backend_properties.json()
+    result_dict["date"] = start_date_str
     return result_dict
     
 
