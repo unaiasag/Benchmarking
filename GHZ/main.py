@@ -314,7 +314,7 @@ def loadAndRunExperiments(file):
         execution_mode = "vqc"  # Could be "estimator", "sampler", or "vqc"
         search_strategy = "binary"  # Could be "linear" or "binary"
         run_mode = "Session" # Could be "Session" or "Batch"
-        benchmark = "Witnesses" # Could be "RS" or "Witnesses"
+        benchmark = "RS" # Could be "RS" or "Witnesses"
         max_retries = 3
 
         if params['simulacion'].lower() == "true":

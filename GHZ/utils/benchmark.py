@@ -6,8 +6,6 @@ from qiskit_ibm_runtime import Estimator, EstimatorOptions, Sampler, SamplerOpti
 from qiskit_ibm_runtime.options import TwirlingOptions, EnvironmentOptions, ResilienceOptionsV2 as ResilienceOptions
 from collections import Counter
 
-
-
 def compute_l(epsilon, delta):
     '''
     l = 8 * log(4 / delta) / epsilon^2

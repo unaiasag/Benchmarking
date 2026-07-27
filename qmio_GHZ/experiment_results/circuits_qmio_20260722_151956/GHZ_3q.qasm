@@ -1,0 +1,35 @@
+OPENQASM 3.0;
+include "stdgates.inc";
+gate ecr _gate_q_0, _gate_q_1 {
+  s _gate_q_0;
+  sx _gate_q_1;
+  cx _gate_q_0, _gate_q_1;
+  x _gate_q_0;
+}
+rz(-pi/2) $16;
+sx $16;
+rz(-pi) $16;
+rz(pi/2) $17;
+sx $17;
+rz(-1.236268782227615) $17;
+sx $17;
+rz(pi/2) $17;
+rz(pi/2) $25;
+sx $25;
+rz(-1.7601468948455556) $25;
+ecr $25, $17;
+rz(pi/2) $17;
+sx $17;
+rz(-1.9053238713621798) $17;
+sx $17;
+rz(-pi/2) $17;
+ecr $16, $17;
+rz(pi/2) $16;
+sx $16;
+rz(pi/2) $16;
+rz(-pi/2) $17;
+sx $17;
+rz(pi/2) $17;
+rz(-0.1893505680506573) $25;
+sx $25;
+rz(-pi/2) $25;
